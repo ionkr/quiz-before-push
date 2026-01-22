@@ -37,6 +37,39 @@ pnpm add -g review-before-go
 yarn global add review-before-go
 ```
 
+## 예시
+
+```
+$ git push origin main
+Running review-before-go...
+📊 Diff Analysis: Files: 2 | Lines: +134/-54 | Complexity: MEDIUM | Questions: 3
+
+📝 Code Review Quiz
+
+Question 1/3
+새로운 `validateInput()` 함수의 목적은 무엇인가요?
+  A) 데이터베이스 쿼리 전 사용자 입력을 검증하기 위해
+  B) 파일 권한을 확인하기 위해
+  C) API 응답을 검증하기 위해
+✔ Your answer: A
+✓ Correct! (10/10)
+
+Question 2/3
+에러 처리 방식을 try-catch에서 Result 타입으로 변경한 이유를 설명하세요.
+✔ Your answer: 성능 향상을 위해
+✗ Score: 3/10
+  Feedback: 성능이 아닌 명시적 에러 처리와 타입 안전성을 위한 변경입니다.
+  Result 타입은 에러 상태를 타입 시스템에서 명확하게 표현합니다.
+
+Question 3/3
+새 CLI 명령어의 `--recursive` 플래그는 어떤 역할을 하나요?
+✔ Your answer: 모든 하위 디렉토리와 그 내용을 처리합니다
+✓ Correct! (10/10)
+
+🎉 Quiz passed! (23/30) Proceeding with push.
+To github.com:user/repo.git  main -> main
+```
+
 ## Git 훅 설정 (권장)
 
 주요 사용 사례는 **git pre-push 훅**으로 실행하는 것입니다 - `git push` 전에 자동으로 퀴즈가 실행됩니다.

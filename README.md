@@ -37,6 +37,39 @@ pnpm add -g review-before-go
 yarn global add review-before-go
 ```
 
+## Example
+
+```
+$ git push origin main
+Running review-before-go...
+📊 Diff Analysis: Files: 2 | Lines: +134/-54 | Complexity: MEDIUM | Questions: 3
+
+📝 Code Review Quiz
+
+Question 1/3
+What is the purpose of the new `validateInput()` function?
+  A) To sanitize user input before database queries
+  B) To check file permissions
+  C) To validate API responses
+✔ Your answer: A
+✓ Correct! (10/10)
+
+Question 2/3
+Explain why the error handling was changed from try-catch to Result type.
+✔ Your answer: For better performance
+✗ Score: 3/10
+  Feedback: The change was made for explicit error handling and type safety,
+  not performance. Result types make error states visible in the type system.
+
+Question 3/3
+What does the `--recursive` flag do in the new CLI command?
+✔ Your answer: It processes all subdirectories and their contents
+✓ Correct! (10/10)
+
+🎉 Quiz passed! (23/30) Proceeding with push.
+To github.com:user/repo.git  main -> main
+```
+
 ## Git Hook Setup (Recommended)
 
 The primary use case is running as a **git pre-push hook** - the quiz runs automatically before every `git push`.
@@ -77,8 +110,6 @@ git config quiz.language ko           # Set quiz language (en, ko, ja, etc.)
 ```
 
 ### 4. Push Your Code
-
-Now when you run `git push`, the quiz will automatically run:
 
 ```bash
 git push  # Quiz runs before push
