@@ -1,5 +1,6 @@
 import type { AIProvider, AIProviderConfig } from './types.js';
 import type { Quiz, Question, EvaluationResult, ComplexityLevel, QuestionType } from '../types/index.js';
+import { ComplexityAnalyzer } from '../analyzer/complexity.js';
 
 interface OllamaChatResponse {
   message: {
@@ -13,11 +14,13 @@ export class OllamaProvider implements AIProvider {
   private baseUrl: string;
   private model: string;
   private language?: string;
+  private complexityAnalyzer: ComplexityAnalyzer;
 
   constructor(config: AIProviderConfig) {
     this.baseUrl = config.baseUrl || 'http://localhost:11434';
     this.model = config.model || 'llama3.2';
     this.language = config.language;
+    this.complexityAnalyzer = new ComplexityAnalyzer();
   }
 
   getName(): string {
@@ -34,8 +37,8 @@ export class OllamaProvider implements AIProvider {
   }
 
   async generateQuiz(diff: string, complexity: number): Promise<Quiz> {
-    const complexityLevel = this.getComplexityLevel(complexity);
-    const quizCount = this.getQuizCount(complexity);
+    const complexityLevel = this.complexityAnalyzer.getDifficultyLevel(complexity);
+    const quizCount = this.complexityAnalyzer.getQuizCount(complexity);
     const languageInstruction = this.language
       ? `Generate all questions and answers in ${this.language}.`
       : 'Generate questions in the same language as the code comments, or English if no comments.';
@@ -207,18 +210,4 @@ Respond with ONLY a JSON object (no markdown, no explanation):
     return JSON.parse(jsonStr) as T;
   }
 
-  private getComplexityLevel(complexity: number): string {
-    if (complexity < 25) return 'LOW';
-    if (complexity < 50) return 'MEDIUM';
-    if (complexity < 75) return 'HIGH';
-    return 'CRITICAL';
-  }
-
-  private getQuizCount(complexity: number): number {
-    if (complexity < 20) return 1;
-    if (complexity < 40) return 2;
-    if (complexity < 60) return 3;
-    if (complexity < 80) return 4;
-    return 5;
-  }
 }

@@ -1,5 +1,6 @@
 import type { AIProvider, AIProviderConfig } from './types.js';
 import type { Quiz, Question, EvaluationResult, ComplexityLevel, QuestionType } from '../types/index.js';
+import { ComplexityAnalyzer } from '../analyzer/complexity.js';
 
 interface AnthropicMessage {
   role: 'user' | 'assistant';
@@ -19,12 +20,14 @@ export class AnthropicProvider implements AIProvider {
   private apiKey: string;
   private model: string;
   private language?: string;
+  private complexityAnalyzer: ComplexityAnalyzer;
 
   constructor(config: AIProviderConfig) {
     this.baseUrl = config.baseUrl || 'https://api.anthropic.com';
     this.apiKey = config.apiKey || process.env.ANTHROPIC_API_KEY || '';
     this.model = config.model || 'claude-sonnet-4-20250514';
     this.language = config.language;
+    this.complexityAnalyzer = new ComplexityAnalyzer();
 
     if (!this.apiKey) {
       throw new Error('ANTHROPIC_API_KEY is required. Set it via environment variable or config.');
@@ -36,8 +39,8 @@ export class AnthropicProvider implements AIProvider {
   }
 
   async generateQuiz(diff: string, complexity: number): Promise<Quiz> {
-    const complexityLevel = this.getComplexityLevel(complexity);
-    const quizCount = this.getQuizCount(complexity);
+    const complexityLevel = this.complexityAnalyzer.getDifficultyLevel(complexity);
+    const quizCount = this.complexityAnalyzer.getQuizCount(complexity);
     const languageInstruction = this.language
       ? `Generate all questions and answers in ${this.language}.`
       : 'Generate questions in the same language as the code comments, or English if no comments.';
@@ -211,18 +214,4 @@ Respond with ONLY a JSON object (no markdown, no explanation):
     return JSON.parse(jsonStr) as T;
   }
 
-  private getComplexityLevel(complexity: number): string {
-    if (complexity < 25) return 'LOW';
-    if (complexity < 50) return 'MEDIUM';
-    if (complexity < 75) return 'HIGH';
-    return 'CRITICAL';
-  }
-
-  private getQuizCount(complexity: number): number {
-    if (complexity < 20) return 1;
-    if (complexity < 40) return 2;
-    if (complexity < 60) return 3;
-    if (complexity < 80) return 4;
-    return 5;
-  }
 }

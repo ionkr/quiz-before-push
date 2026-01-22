@@ -1,6 +1,6 @@
 {
   "name": "quiz-before-push",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "AI-powered code review quiz to ensure developers understand AI-written code before committing",
   "type": "module",
   "main": "dist/index.js",
