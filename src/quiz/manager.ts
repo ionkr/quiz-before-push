@@ -1,7 +1,8 @@
-import * as readline from 'readline';
 import chalk from 'chalk';
 import ora from 'ora';
 import select from '@inquirer/select';
+import input from '@inquirer/input';
+import confirm from '@inquirer/confirm';
 import type { AIProvider } from '../providers/types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 
@@ -33,7 +34,6 @@ const DEFAULT_OPTIONS: QuizManagerOptions = {
 export class QuizManager {
   private provider: AIProvider;
   private options: QuizManagerOptions;
-  private rl: readline.Interface | null = null;
 
   constructor(provider: AIProvider, options: Partial<QuizManagerOptions> = {}) {
     this.provider = provider;
@@ -43,8 +43,6 @@ export class QuizManager {
   async runQuiz(quiz: Quiz, diff?: string): Promise<QuizResult> {
     const results: QuizResult['results'] = [];
     let failureCount = 0;
-
-    this.initReadline();
 
     console.log(chalk.bold.cyan('\n📝 Code Review Quiz'));
     console.log(chalk.gray(`Complexity: ${quiz.complexity} | Questions: ${quiz.questions.length}\n`));
@@ -61,29 +59,39 @@ export class QuizManager {
         const answer = await this.getAnswer(question);
         lastAnswer = answer;
 
-        const spinner = ora('Evaluating your answer...').start();
+        let evaluation: EvaluationResult;
 
-        try {
-          const evaluation = await this.provider.evaluateAnswer(question, answer);
+        // 객관식이고 correctChoiceLabel이 있으면 로컬 평가 (API 호출 없음)
+        if (question.type === 'MULTIPLE_CHOICE' && question.correctChoiceLabel) {
+          evaluation = this.evaluateMultipleChoice(question, answer);
           lastEvaluation = evaluation;
-          spinner.stop();
-
           this.displayEvaluation(evaluation);
+        } else {
+          // 서술형이거나 correctChoiceLabel이 없으면 AI 평가
+          const spinner = ora('Evaluating your answer...').start();
 
-          if (evaluation.passed) {
-            passed = true;
-          } else {
-            failureCount++;
-            if (failureCount < this.options.maxRetries) {
-              console.log(
-                chalk.yellow(`\n⚠️  Attempts remaining: ${this.options.maxRetries - failureCount}`)
-              );
-              console.log(chalk.gray('Try again with a more detailed answer.\n'));
-            }
+          try {
+            evaluation = await this.provider.evaluateAnswer(question, answer);
+            lastEvaluation = evaluation;
+            spinner.stop();
+
+            this.displayEvaluation(evaluation);
+          } catch (error) {
+            spinner.fail('Failed to evaluate answer');
+            throw error;
           }
-        } catch (error) {
-          spinner.fail('Failed to evaluate answer');
-          throw error;
+        }
+
+        if (evaluation.passed) {
+          passed = true;
+        } else {
+          failureCount++;
+          if (failureCount < this.options.maxRetries) {
+            console.log(
+              chalk.yellow(`\n⚠️  Attempts remaining: ${this.options.maxRetries - failureCount}`)
+            );
+            console.log(chalk.gray('Try again with a more detailed answer.\n'));
+          }
         }
       }
 
@@ -98,7 +106,6 @@ export class QuizManager {
       // Check if we've hit max failures
       if (failureCount >= this.options.maxRetries && !passed) {
         const bypassed = await this.handleFailure(diff);
-        this.closeReadline();
 
         return {
           totalQuestions: quiz.questions.length,
@@ -110,8 +117,6 @@ export class QuizManager {
         };
       }
     }
-
-    this.closeReadline();
 
     const passedCount = results.filter((r) => r.evaluation.passed).length;
     const overallPassed = passedCount === quiz.questions.length;
@@ -145,8 +150,7 @@ export class QuizManager {
     }
 
     const bypass = await this.askYesNo(
-      chalk.yellow('Do you want to bypass the quiz and proceed anyway?') +
-        chalk.red(' (This is not recommended)')
+      'Do you want to bypass the quiz and proceed anyway? (This is not recommended)'
     );
 
     if (bypass) {
@@ -156,20 +160,6 @@ export class QuizManager {
 
     console.log(chalk.red('\n🚫 Operation blocked. Please understand the changes before proceeding.\n'));
     return false;
-  }
-
-  private initReadline(): void {
-    this.rl = readline.createInterface({
-      input: process.stdin,
-      output: process.stdout,
-    });
-  }
-
-  private closeReadline(): void {
-    if (this.rl) {
-      this.rl.close();
-      this.rl = null;
-    }
   }
 
   private displayQuestion(question: Question, current: number, total: number): void {
@@ -182,6 +172,26 @@ export class QuizManager {
     // MULTIPLE_CHOICE가 아닐 때만 질문 텍스트 출력 (select가 message로 표시)
     if (question.type !== 'MULTIPLE_CHOICE') {
       console.log(chalk.white(`\n${question.question}\n`));
+    }
+  }
+
+  private evaluateMultipleChoice(question: Question, answer: string): EvaluationResult {
+    const isCorrect = answer === question.correctChoiceLabel;
+
+    if (isCorrect) {
+      return {
+        score: 10,
+        passed: true,
+        feedback: question.correctFeedback || 'Correct!',
+        correctAnswer: question.correctChoiceLabel,
+      };
+    } else {
+      return {
+        score: 0,
+        passed: false,
+        feedback: question.incorrectFeedback || `Incorrect. The correct answer is ${question.correctChoiceLabel}.`,
+        correctAnswer: question.correctChoiceLabel,
+      };
     }
   }
 
@@ -214,9 +224,6 @@ export class QuizManager {
   }
 
   private async getMultipleChoiceAnswer(question: Question): Promise<string> {
-    // readline 충돌 방지
-    this.closeReadline();
-
     const choices = question.choices!.map(choice => ({
       value: choice.label,
       name: `${choice.label}) ${choice.text}`,
@@ -235,9 +242,6 @@ export class QuizManager {
         process.exit(1);
       }
       throw error;
-    } finally {
-      // 다음 질문을 위해 readline 재초기화
-      this.initReadline();
     }
   }
 
@@ -246,23 +250,33 @@ export class QuizManager {
       return this.getMultipleChoiceAnswer(question);
     }
 
-    const prompt = chalk.cyan('Your answer: ');
-    return this.prompt(prompt);
+    // 서술형 입력도 inquirer 사용 (readline과 충돌 방지)
+    try {
+      const answer = await input({
+        message: 'Your answer:',
+      });
+      return answer.trim();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ExitPromptError') {
+        console.log(chalk.yellow('\n\nQuiz cancelled.'));
+        process.exit(1);
+      }
+      throw error;
+    }
   }
 
   private async askYesNo(message: string): Promise<boolean> {
-    const answer = await this.prompt(`${message} ${chalk.gray('(y/n)')}: `);
-    return answer.toLowerCase().startsWith('y');
-  }
-
-  private prompt(message: string): Promise<string> {
-    return new Promise((resolve) => {
-      if (!this.rl) {
-        this.initReadline();
-      }
-      this.rl!.question(message, (answer) => {
-        resolve(answer.trim());
+    try {
+      return await confirm({
+        message: message,
+        default: false,
       });
-    });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ExitPromptError') {
+        console.log(chalk.yellow('\n\nQuiz cancelled.'));
+        process.exit(1);
+      }
+      throw error;
+    }
   }
 }

@@ -69,6 +69,9 @@ Respond with ONLY a JSON object (no markdown, no explanation) in this exact form
         {"label": "D", "text": "Fourth option"}
       ],
       "correctAnswer": "A",
+      "correctChoiceLabel": "A",
+      "correctFeedback": "Feedback to show when the developer selects the correct answer",
+      "incorrectFeedback": "Feedback to show when the developer selects a wrong answer, explaining why the correct answer is right",
       "context": "Brief context about what part of the diff this relates to"
     },
     {
@@ -89,6 +92,9 @@ Respond with ONLY a JSON object (no markdown, no explanation) in this exact form
         question: string;
         choices?: Array<{ label: string; text: string }>;
         correctAnswer?: string;
+        correctChoiceLabel?: string;
+        correctFeedback?: string;
+        incorrectFeedback?: string;
         context?: string;
       }>;
     }>(content);
@@ -100,6 +106,9 @@ Respond with ONLY a JSON object (no markdown, no explanation) in this exact form
         question: q.question,
         choices: q.choices,
         correctAnswer: q.correctAnswer,
+        correctChoiceLabel: q.correctChoiceLabel,
+        correctFeedback: q.correctFeedback,
+        incorrectFeedback: q.incorrectFeedback,
         context: q.context,
       })),
       complexity: complexityLevel as ComplexityLevel,
@@ -112,7 +121,7 @@ Respond with ONLY a JSON object (no markdown, no explanation) in this exact form
       ? `Provide feedback in ${this.language}.`
       : 'Provide feedback in the same language as the question.';
 
-    const prompt = `You are evaluating a developer's answer to a code review quiz question.
+    const prompt = `You are a lenient evaluator for a code review quiz. Be generous and focus on whether the developer understands the core concept.
 
 Question: ${question.question}
 ${question.type === 'MULTIPLE_CHOICE' ? `Choices:\n${question.choices?.map((c) => `${c.label}. ${c.text}`).join('\n')}` : ''}
@@ -121,18 +130,24 @@ Developer's Answer: ${answer}
 
 ${languageInstruction}
 
-Evaluate the answer on a scale of 0-10:
-- 0-3: Completely wrong or shows no understanding
-- 4-6: Partially correct but missing key points
-- 7-8: Good understanding with minor gaps
-- 9-10: Excellent, demonstrates full understanding
+IMPORTANT: Be generous in scoring. If the developer shows they understand the main idea, give them credit.
+
+Scoring guide (be lenient):
+- 7-10: Developer understands the core concept, even if explanation is brief or imperfect
+- 4-6: Partial understanding, missing important aspects
+- 0-3: Completely wrong or no understanding
+
+A brief but correct answer should score 7+. Don't penalize for:
+- Informal language or typos
+- Missing minor details if the main point is correct
+- Different wording that conveys the same meaning
 
 Respond with ONLY a JSON object (no markdown, no explanation):
 {
   "score": <number 0-10>,
   "passed": <boolean, true if score >= 7>,
-  "feedback": "Detailed feedback explaining the score",
-  "correctAnswer": "The correct answer or key points that should have been mentioned"
+  "feedback": "Brief, encouraging feedback",
+  "correctAnswer": "Key points (only if failed)"
 }`;
 
     const content = await this.chat(prompt);

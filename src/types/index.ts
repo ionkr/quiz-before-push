@@ -22,6 +22,10 @@ export interface Question {
   choices?: Choice[];
   correctAnswer?: string;
   context?: string;
+  // 객관식 문제용 필드 (로컬 평가를 위해)
+  correctChoiceLabel?: string; // 정답 선택지 라벨 (예: 'A', 'B')
+  correctFeedback?: string; // 정답 시 피드백
+  incorrectFeedback?: string; // 오답 시 피드백
 }
 
 export interface Quiz {
