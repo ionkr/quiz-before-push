@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "quiz-before-push": "dist/cli.js"
+    "quiz-before-push": "dist/cli.js",
+    "qbp": "dist/cli.js"
   },
   "files": [
     "dist",
