@@ -1,0 +1,158 @@
+import { execSync } from 'child_process';
+import chalk from 'chalk';
+import { createProvider, type ProviderOptions } from './providers/index.js';
+import { ComplexityAnalyzer } from './analyzer/complexity.js';
+import { QuizManager, type QuizResult } from './quiz/manager.js';
+
+export interface GitQuizOptions extends ProviderOptions {
+  maxRetries?: number;
+  passingScore?: number;
+  skipQuiz?: boolean;
+}
+
+export class GitQuiz {
+  private options: GitQuizOptions;
+  private analyzer: ComplexityAnalyzer;
+
+  constructor(options: GitQuizOptions) {
+    this.options = options;
+    this.analyzer = new ComplexityAnalyzer();
+  }
+
+  async run(): Promise<number> {
+    try {
+      // Skip quiz if requested
+      if (this.options.skipQuiz) {
+        console.log(chalk.yellow('⚠️  Quiz skipped. Proceeding without verification.\n'));
+        return 0;
+      }
+
+      // Get staged diff
+      const diff = this.getStagedDiff();
+
+      if (!diff || diff.trim().length === 0) {
+        console.log(chalk.gray('No staged changes found. Nothing to quiz.\n'));
+        return 0;
+      }
+
+      // Sanitize diff to remove sensitive data
+      const sanitizedDiff = this.sanitizeDiff(diff);
+
+      // Analyze complexity
+      const analysis = this.analyzer.analyzeDiff(sanitizedDiff);
+
+      console.log(chalk.cyan('📊 Diff Analysis:'));
+      console.log(chalk.gray(`   Files: ${analysis.fileCount}`));
+      console.log(chalk.gray(`   Lines: +${analysis.addedLines} / -${analysis.deletedLines}`));
+      console.log(chalk.gray(`   Complexity: ${analysis.complexity} (${analysis.level})`));
+      console.log(chalk.gray(`   Quiz Questions: ${this.analyzer.getQuizCount(analysis.complexity)}\n`));
+
+      // Create provider
+      const provider = createProvider({
+        provider: this.options.provider,
+        model: this.options.model,
+        apiKey: this.options.apiKey,
+        ollamaUrl: this.options.ollamaUrl,
+        language: this.options.language,
+      });
+
+      // Generate quiz
+      console.log(chalk.cyan(`🤖 Generating quiz using ${provider.getName()}...`));
+
+      const quiz = await provider.generateQuiz(sanitizedDiff, analysis.complexity);
+
+      // Run quiz
+      const quizManager = new QuizManager(provider, {
+        maxRetries: this.options.maxRetries ?? 3,
+        passingScore: this.options.passingScore ?? 7,
+      });
+
+      const result = await quizManager.runQuiz(quiz, diff);
+
+      return this.getExitCode(result);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(chalk.red(`\n❌ Error: ${error.message}\n`));
+      } else {
+        console.error(chalk.red('\n❌ An unexpected error occurred.\n'));
+      }
+      return 1;
+    }
+  }
+
+  private getStagedDiff(): string {
+    try {
+      return execSync('git diff --staged', {
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+      });
+    } catch (error) {
+      if (error instanceof Error && 'status' in error) {
+        // Git command failed
+        throw new Error('Failed to get staged diff. Are you in a git repository?');
+      }
+      throw error;
+    }
+  }
+
+  private sanitizeDiff(diff: string): string {
+    // Patterns for sensitive data
+    const sensitivePatterns = [
+      // API keys (various formats)
+      /(['"`])?(api[_-]?key|apikey|api[_-]?secret|secret[_-]?key)\1?\s*[:=]\s*['"`]?[a-zA-Z0-9_\-]{20,}['"`]?/gi,
+      // AWS credentials
+      /(['"`])?(aws[_-]?access[_-]?key[_-]?id|aws[_-]?secret[_-]?access[_-]?key)\1?\s*[:=]\s*['"`]?[A-Z0-9]{16,}['"`]?/gi,
+      // Bearer tokens
+      /bearer\s+[a-zA-Z0-9_\-\.]+/gi,
+      // Private keys
+      /-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----[\s\S]*?-----END\s+(RSA\s+)?PRIVATE\s+KEY-----/g,
+      // Passwords in common formats
+      /(['"`])?(password|passwd|pwd|secret)\1?\s*[:=]\s*['"`][^'"`\n]{8,}['"`]/gi,
+      // Database connection strings
+      /mongodb(\+srv)?:\/\/[^\s'"]+/gi,
+      /postgres(ql)?:\/\/[^\s'"]+/gi,
+      /mysql:\/\/[^\s'"]+/gi,
+      /redis:\/\/[^\s'"]+/gi,
+      // JWT tokens
+      /eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*/g,
+      // Generic secrets (long base64-like strings that look like secrets)
+      /(['"`])?(token|auth|credential|secret)\1?\s*[:=]\s*['"`]?[a-zA-Z0-9+/]{32,}=*['"`]?/gi,
+    ];
+
+    let sanitized = diff;
+
+    for (const pattern of sensitivePatterns) {
+      sanitized = sanitized.replace(pattern, (match) => {
+        // Keep the key name but redact the value
+        const keyMatch = match.match(/^(['"`])?(\w+)\1?\s*[:=]/);
+        if (keyMatch) {
+          return `${keyMatch[0]} [REDACTED]`;
+        }
+        return '[REDACTED]';
+      });
+    }
+
+    return sanitized;
+  }
+
+  private getExitCode(result: QuizResult): number {
+    if (result.overallPassed) {
+      console.log(chalk.green('✅ Quiz passed! Proceeding with commit.\n'));
+      return 0;
+    }
+
+    if (result.bypassed) {
+      console.log(chalk.yellow('⚠️  Quiz bypassed. Proceeding with caution.\n'));
+      return 0;
+    }
+
+    console.log(chalk.red('🚫 Quiz failed. Commit blocked.\n'));
+    return 1;
+  }
+}
+
+// Export types and classes for programmatic use
+export { createProvider, type ProviderOptions } from './providers/index.js';
+export { ComplexityAnalyzer, type DiffAnalysis } from './analyzer/complexity.js';
+export { QuizManager, type QuizResult, type QuizManagerOptions } from './quiz/manager.js';
+export * from './types/index.js';
