@@ -10,6 +10,7 @@ export interface ProviderOptions {
   apiKey?: string;
   ollamaUrl?: string;
   language?: string;
+  mode?: 'default' | 'pre-push';
 }
 
 export function createProvider(options: ProviderOptions): AIProvider {

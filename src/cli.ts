@@ -15,6 +15,7 @@ interface GitQuizCliOptions {
   apiKey?: string;
   ollamaUrl?: string;
   language?: string;
+  mode?: 'default' | 'pre-push';
   skipQuiz?: boolean;
   installHooks?: boolean;
 }
@@ -68,12 +69,12 @@ fi
 
 echo "Running review-before-go..."
 
-# Run the quiz
+# Run the quiz with pre-push mode
 if command -v review-before-go &> /dev/null; then
-  review-before-go
+  review-before-go --mode pre-push
 else
   # Fallback to npx if review-before-go is not installed globally
-  npx review-before-go
+  npx review-before-go --mode pre-push
 fi
 
 exit $?
@@ -121,6 +122,7 @@ program
   .option('-k, --api-key <key>', 'API key (or set OPENAI_API_KEY/ANTHROPIC_API_KEY env var)')
   .option('-u, --ollama-url <url>', 'Ollama server URL', 'http://localhost:11434')
   .option('-l, --language <lang>', 'Language for quiz questions (e.g., en, ko, ja)')
+  .option('--mode <mode>', 'Diff mode: default (staged+unstaged) or pre-push (commits to push)', 'default')
   .option('-s, --skip-quiz', 'Skip the quiz (dangerous, not recommended)')
   .option('--install-hooks', 'Install git hooks for automatic quiz on push')
   .action(async (options: GitQuizCliOptions) => {
@@ -145,6 +147,7 @@ program
       apiKey: options.apiKey || gitConfigDefaults.apiKey || getDefaultApiKey(provider),
       ollamaUrl: options.ollamaUrl || gitConfigDefaults.ollamaUrl || 'http://localhost:11434',
       language: options.language || gitConfigDefaults.language,
+      mode: (options.mode as 'default' | 'pre-push') || 'default',
       skipQuiz: options.skipQuiz,
     };
 
@@ -153,6 +156,14 @@ program
     if (!validProviders.includes(finalOptions.provider)) {
       console.error(chalk.red(`❌ Invalid provider: ${finalOptions.provider}`));
       console.error(chalk.gray(`   Valid providers: ${validProviders.join(', ')}`));
+      process.exit(1);
+    }
+
+    // Validate mode
+    const validModes = ['default', 'pre-push'];
+    if (finalOptions.mode && !validModes.includes(finalOptions.mode)) {
+      console.error(chalk.red(`❌ Invalid mode: ${finalOptions.mode}`));
+      console.error(chalk.gray(`   Valid modes: ${validModes.join(', ')}`));
       process.exit(1);
     }
 
@@ -169,6 +180,7 @@ program
       apiKey: finalOptions.apiKey,
       ollamaUrl: finalOptions.ollamaUrl,
       language: finalOptions.language,
+      mode: finalOptions.mode,
       skipQuiz: finalOptions.skipQuiz,
     });
 

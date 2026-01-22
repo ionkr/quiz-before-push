@@ -56,8 +56,18 @@ review-before-go --language ko
 | `-k, --api-key <key>` | API key (OpenAI or Anthropic) | `$OPENAI_API_KEY` or `$ANTHROPIC_API_KEY` |
 | `-u, --ollama-url <url>` | Ollama server URL | `http://localhost:11434` |
 | `-l, --language <lang>` | Quiz language (en, ko, ja, etc.) | Auto-detect |
+| `--mode <mode>` | Diff mode: `default` or `pre-push` | `default` |
 | `-s, --skip-quiz` | Skip quiz (not recommended) | `false` |
 | `--install-hooks` | Install git pre-push hook | - |
+
+### Diff Modes
+
+| Mode | Git Command | Use Case |
+|------|-------------|----------|
+| `default` | `git diff HEAD` | Post-edit, general use (staged + unstaged changes) |
+| `pre-push` | `git diff @{push}..HEAD` | Pre-push hook (commits to be pushed) |
+
+The `pre-push` mode is automatically used when running via git pre-push hook.
 
 ### Git Config
 
@@ -141,7 +151,9 @@ See [claude-hook/README.md](./claude-hook/README.md) for Claude Code post-edit h
 
 ## How It Works
 
-1. **Detect Changes**: Analyzes `git diff --staged`
+1. **Detect Changes**: Analyzes git diff (mode-dependent)
+   - `default` mode: `git diff HEAD` (staged + unstaged)
+   - `pre-push` mode: `git diff @{push}..HEAD` (commits to push)
 2. **Calculate Complexity**: Determines quiz difficulty based on:
    - Number of files changed
    - Lines added/deleted

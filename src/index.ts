@@ -27,11 +27,11 @@ export class GitQuiz {
         return 0;
       }
 
-      // Get staged diff
-      const diff = this.getStagedDiff();
+      // Get diff based on mode
+      const diff = this.getDiff();
 
       if (!diff || diff.trim().length === 0) {
-        console.log(chalk.gray('No staged changes found. Nothing to quiz.\n'));
+        console.log(chalk.gray('No changes found. Nothing to quiz.\n'));
         return 0;
       }
 
@@ -80,18 +80,49 @@ export class GitQuiz {
     }
   }
 
-  private getStagedDiff(): string {
+  private getDiff(): string {
+    const mode = this.options.mode || 'default';
+
     try {
-      return execSync('git diff --staged', {
+      if (mode === 'pre-push') {
+        // pre-push: 푸시할 커밋들의 변경사항
+        return this.getPrePushDiff();
+      }
+
+      // default: staged + unstaged
+      return execSync('git diff HEAD', {
         encoding: 'utf-8',
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
       });
     } catch (error) {
       if (error instanceof Error && 'status' in error) {
         // Git command failed
-        throw new Error('Failed to get staged diff. Are you in a git repository?');
+        throw new Error('Failed to get diff. Are you in a git repository?');
       }
       throw error;
+    }
+  }
+
+  private getPrePushDiff(): string {
+    try {
+      // upstream이 설정된 경우
+      return execSync('git diff @{push}..HEAD', {
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024,
+      });
+    } catch {
+      // upstream이 없으면 origin/main 또는 origin/master와 비교
+      try {
+        return execSync('git diff origin/main..HEAD', {
+          encoding: 'utf-8',
+          maxBuffer: 10 * 1024 * 1024,
+        });
+      } catch {
+        return execSync('git diff origin/master..HEAD', {
+          encoding: 'utf-8',
+          maxBuffer: 10 * 1024 * 1024,
+        });
+      }
     }
   }
 

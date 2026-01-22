@@ -76,11 +76,11 @@ fi
 # Try to run review-before-go
 if command -v review-before-go >/dev/null 2>&1; then
     # review-before-go is installed globally
-    eval "review-before-go $OPTIONS"
+    eval "review-before-go --mode pre-push $OPTIONS"
     EXIT_CODE=$?
 elif command -v npx >/dev/null 2>&1; then
     # Fall back to npx
-    eval "npx review-before-go $OPTIONS"
+    eval "npx review-before-go --mode pre-push $OPTIONS"
     EXIT_CODE=$?
 else
     echo "Error: review-before-go is not installed."

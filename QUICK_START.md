@@ -24,15 +24,15 @@ ollama serve
 ## 3. Run Quiz
 
 ```bash
-# Stage your changes
-git add .
-
-# Run the quiz
+# Run the quiz (analyzes all uncommitted changes)
 review-before-go
 
 # Or with Ollama (no API key needed)
 review-before-go --provider ollama
 ```
+
+> **Note**: By default, `review-before-go` analyzes all uncommitted changes (staged + unstaged).
+> When used via git pre-push hook, it automatically switches to `--mode pre-push` to analyze only commits being pushed.
 
 ## 4. Install Git Hook (Optional)
 
