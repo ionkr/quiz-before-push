@@ -34,7 +34,7 @@ Main orchestrator class.
 import { GitQuiz, GitQuizOptions } from 'review-before-go';
 
 interface GitQuizOptions {
-  provider: 'openai' | 'ollama' | 'claude-code';
+  provider: 'openai' | 'anthropic' | 'ollama' | 'claude-code';
   model?: string;
   apiKey?: string;
   ollamaUrl?: string;
@@ -116,6 +116,18 @@ const provider = new OpenAIProvider({
   model: 'gpt-4o',
   apiKey: process.env.OPENAI_API_KEY,
   language: 'ko',
+});
+```
+
+#### AnthropicProvider
+
+```typescript
+import { AnthropicProvider } from 'review-before-go';
+
+const provider = new AnthropicProvider({
+  model: 'claude-sonnet-4-20250514',
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  language: 'en',
 });
 ```
 

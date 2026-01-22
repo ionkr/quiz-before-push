@@ -42,7 +42,7 @@ export interface EvaluationResult {
 }
 
 export interface QuizConfig {
-  provider: 'openai' | 'ollama' | 'claude-code';
+  provider: 'openai' | 'anthropic' | 'ollama' | 'claude-code';
   model?: string;
   apiKey?: string;
   ollamaUrl?: string;

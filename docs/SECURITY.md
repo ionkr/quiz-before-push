@@ -125,6 +125,12 @@ review-before-go --provider ollama
 - Recommended for sensitive codebases
 - No API key required
 
+### Anthropic
+
+- Data sent to Anthropic API
+- Subject to [Anthropic's privacy policy](https://www.anthropic.com/privacy)
+- API data handling follows Anthropic's data retention policies
+
 ### Claude Code
 
 - Uses the Claude CLI

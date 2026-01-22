@@ -1,0 +1,244 @@
+# review-before-go
+
+[![npm version](https://img.shields.io/npm/v/review-before-go.svg)](https://www.npmjs.com/package/review-before-go)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+**[English Documentation](./README.md)**
+
+AI가 생성한 코드를 커밋하기 전에 개발자가 이해했는지 확인하는 AI 기반 코드 리뷰 퀴즈 도구입니다.
+
+## 왜 필요한가요?
+
+Claude Code, GitHub Copilot, ChatGPT 같은 AI 코딩 어시스턴트를 사용할 때, 코드 변경사항을 완전히 이해하지 않고 수락하기 쉽습니다. **review-before-go**는 커밋하려는 변경사항에 대한 퀴즈를 생성하여 코드를 이해했는지 검증합니다.
+
+- AI가 생성한 코드를 무분별하게 수락하는 것을 방지
+- 대화형 퀴즈를 통한 코드 이해도 향상
+- 이해가 검증될 때까지 커밋 차단
+
+## 주요 기능
+
+- **다양한 AI 프로바이더 지원**: OpenAI, Anthropic, Ollama (로컬), Claude Code
+- **적응형 난이도**: 코드 변경 복잡도에 맞춰 퀴즈 난이도 자동 조절
+- **다국어 지원**: 모든 언어로 퀴즈 생성 (자동 감지 또는 설정 가능)
+- **Git 통합**: pre-push 훅 또는 독립 실행형 CLI로 사용
+- **Claude Code 통합**: 편집 후 실시간 퀴즈를 위한 post-edit 훅
+- **보안 우선**: diff에서 민감한 데이터 자동 제거
+
+## 설치
+
+```bash
+# npm
+npm install -g review-before-go
+
+# pnpm
+pnpm add -g review-before-go
+
+# yarn
+yarn global add review-before-go
+```
+
+## 빠른 시작
+
+```bash
+# 현재 변경사항에 대한 퀴즈 실행
+review-before-go
+
+# git pre-push 훅으로 설치
+review-before-go --install-hooks
+git config quiz.enabled true
+
+# 다른 프로바이더 사용
+review-before-go --provider openai      # OpenAI (기본값)
+review-before-go --provider anthropic   # Anthropic Claude
+review-before-go --provider ollama      # 로컬 Ollama
+review-before-go --provider claude-code # Claude Code CLI
+
+# 특정 언어로 퀴즈 생성
+review-before-go --language ko  # 한국어
+review-before-go --language ja  # 일본어
+```
+
+## AI 에이전트 설정 가이드
+
+AI 에이전트(Claude Code, Cursor, GitHub Copilot 등)에게 이 패키지 설정을 요청할 때 다음 지침을 제공하세요:
+
+### AI 에이전트용: 설정 지침
+
+```
+이 프로젝트에 review-before-go를 설정해주세요:
+
+1. 전역 설치: npm install -g review-before-go
+
+2. git 훅 설치: review-before-go --install-hooks
+
+3. 퀴즈 활성화: git config quiz.enabled true
+
+4. 프로바이더 설정 (하나 선택):
+   - OpenAI 사용 시: OPENAI_API_KEY 환경 변수 설정 필요
+   - Anthropic 사용 시: ANTHROPIC_API_KEY 환경 변수 설정 필요
+   - Ollama 사용 시: Ollama가 로컬에서 실행 중이어야 함 (ollama serve)
+   - Claude Code 사용 시: 추가 설정 불필요
+
+5. 선택적 설정:
+   git config quiz.provider <openai|anthropic|ollama|claude-code>
+   git config quiz.language <en|ko|ja|etc>
+   git config quiz.model <모델명>
+```
+
+### Claude Code 통합
+
+Claude Code 사용자는 `~/.claude/settings.json`에 다음을 추가하세요:
+
+```json
+{
+  "hooks": {
+    "post-edit": [
+      {
+        "name": "review-before-go",
+        "command": "review-before-go --provider claude-code",
+        "timeout": 300000,
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
+## 설정
+
+### CLI 옵션
+
+| 옵션 | 설명 | 기본값 |
+|------|------|--------|
+| `-p, --provider <provider>` | AI 프로바이더 (openai, anthropic, ollama, claude-code) | `openai` |
+| `-m, --model <model>` | 사용할 모델 | 프로바이더 기본값 |
+| `-k, --api-key <key>` | API 키 | `$OPENAI_API_KEY` 또는 `$ANTHROPIC_API_KEY` |
+| `-u, --ollama-url <url>` | Ollama 서버 URL | `http://localhost:11434` |
+| `-l, --language <lang>` | 퀴즈 언어 (en, ko, ja 등) | 자동 감지 |
+| `--mode <mode>` | Diff 모드: `default` 또는 `pre-push` | `default` |
+| `-s, --skip-quiz` | 퀴즈 건너뛰기 (권장하지 않음) | `false` |
+| `--install-hooks` | git pre-push 훅 설치 | - |
+
+### Diff 모드
+
+| 모드 | Git 명령어 | 사용 사례 |
+|------|-----------|-----------|
+| `default` | `git diff HEAD` | 일반 사용 (staged + unstaged 변경사항) |
+| `pre-push` | `git diff @{push}..HEAD` | pre-push 훅 (푸시할 커밋들) |
+
+### Git Config
+
+```bash
+git config quiz.enabled true        # 퀴즈 훅 활성화
+git config quiz.provider anthropic  # 프로바이더 설정
+git config quiz.model claude-sonnet-4-20250514  # 모델 설정
+git config quiz.language ko         # 언어 설정
+```
+
+### 환경 변수
+
+```bash
+export OPENAI_API_KEY=sk-...        # OpenAI API 키
+export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API 키
+```
+
+## 프로바이더
+
+### OpenAI (기본값)
+
+```bash
+export OPENAI_API_KEY=sk-...
+review-before-go --provider openai --model gpt-4o
+```
+
+### Anthropic
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+review-before-go --provider anthropic --model claude-sonnet-4-20250514
+```
+
+### Ollama (로컬)
+
+API 키가 필요 없습니다. 완전히 로컬에서 실행됩니다.
+
+```bash
+ollama serve  # Ollama 서버 시작
+review-before-go --provider ollama --model llama3.2
+```
+
+### Claude Code
+
+Claude CLI를 사용합니다. 추가 설정이 필요 없습니다.
+
+```bash
+review-before-go --provider claude-code
+```
+
+## 동작 방식
+
+```
+┌─────────────────┐
+│   코드 변경사항   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   Diff 분석     │ ← 복잡도 계산
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   퀴즈 생성     │ ← 복잡도에 따라 1-5개 문제
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│   답변 평가     │ ← 0-10점 채점, 7점 이상 통과
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+ 통과 ✓    실패 ✗
+    │         │
+ 커밋      재시도
+ 허용      또는 우회
+```
+
+## 보안
+
+AI에 전송하기 전에 민감한 데이터가 자동으로 제거됩니다:
+
+- API 키 및 시크릿
+- 비밀번호 및 자격 증명
+- JWT 토큰
+- 데이터베이스 연결 문자열
+- 개인 키
+
+최대 보안을 위해 Ollama (로컬)를 사용하세요 - 데이터가 외부로 전송되지 않습니다.
+
+자세한 내용은 [docs/SECURITY.md](./docs/SECURITY.md)를 참조하세요.
+
+## 프로그래매틱 API
+
+```typescript
+import { GitQuiz, createProvider, ComplexityAnalyzer } from 'review-before-go';
+
+const quiz = new GitQuiz({
+  provider: 'anthropic',
+  model: 'claude-sonnet-4-20250514',
+  language: 'ko',
+});
+
+const exitCode = await quiz.run();
+```
+
+전체 API 문서는 [docs/API.md](./docs/API.md)를 참조하세요.
+
+## 기여하기
+
+기여를 환영합니다! Pull Request를 자유롭게 제출해주세요.
+
+## 라이선스
+
+MIT
