@@ -3,7 +3,7 @@
   "hooks": {
     "post-edit": [
       {
-        "name": "review-before-go",
+        "name": "quiz-before-push",
         "description": "Run code review quiz after editing files",
         "command": "${CLAUDE_HOOK_DIR}/run-quiz.sh",
         "timeout": 300000,

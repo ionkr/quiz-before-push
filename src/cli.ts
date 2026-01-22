@@ -58,7 +58,7 @@ function installGitHooks(): void {
 
     // Pre-push hook content
     const prePushHook = `#!/bin/sh
-# review-before-go pre-push hook
+# quiz-before-push pre-push hook
 # This hook runs before git push to ensure code understanding
 
 # Check if quiz is enabled
@@ -67,14 +67,14 @@ if [ "$QUIZ_ENABLED" != "true" ]; then
   exit 0
 fi
 
-echo "Running review-before-go..."
+echo "Running quiz-before-push..."
 
 # Run the quiz with pre-push mode
-if command -v review-before-go &> /dev/null; then
-  review-before-go --mode pre-push
+if command -v quiz-before-push &> /dev/null; then
+  quiz-before-push --mode pre-push
 else
-  # Fallback to npx if review-before-go is not installed globally
-  npx review-before-go --mode pre-push
+  # Fallback to npx if quiz-before-push is not installed globally
+  npx quiz-before-push --mode pre-push
 fi
 
 exit $?
@@ -85,7 +85,7 @@ exit $?
     // Check if hook already exists
     if (existsSync(prePushPath)) {
       console.log(chalk.yellow('⚠️  pre-push hook already exists.'));
-      console.log(chalk.gray('   To enable review-before-go, add it to your existing hook or run:'));
+      console.log(chalk.gray('   To enable quiz-before-push, add it to your existing hook or run:'));
       console.log(chalk.cyan('   git config quiz.enabled true\n'));
       return;
     }
@@ -110,7 +110,7 @@ exit $?
 }
 
 program
-  .name('review-before-go')
+  .name('quiz-before-push')
   .description('AI-powered code review quiz to ensure developers understand code changes')
   .version('0.1.0')
   .option(

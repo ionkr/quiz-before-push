@@ -1,11 +1,11 @@
 # Quick Start Guide
 
-Get started with review-before-go in under 2 minutes.
+Get started with quiz-before-push in under 2 minutes.
 
 ## 1. Install
 
 ```bash
-npm install -g review-before-go
+npm install -g quiz-before-push
 ```
 
 ## 2. Set Up API Key (OpenAI)
@@ -25,19 +25,19 @@ ollama serve
 
 ```bash
 # Run the quiz (analyzes all uncommitted changes)
-review-before-go
+quiz-before-push
 
 # Or with Ollama (no API key needed)
-review-before-go --provider ollama
+quiz-before-push --provider ollama
 ```
 
-> **Note**: By default, `review-before-go` analyzes all uncommitted changes (staged + unstaged).
+> **Note**: By default, `quiz-before-push` analyzes all uncommitted changes (staged + unstaged).
 > When used via git pre-push hook, it automatically switches to `--mode pre-push` to analyze only commits being pushed.
 
 ## 4. Install Git Hook (Optional)
 
 ```bash
-review-before-go --install-hooks
+quiz-before-push --install-hooks
 git config quiz.enabled true
 ```
 
@@ -46,7 +46,7 @@ Now the quiz runs automatically before every `git push`.
 ## Example Session
 
 ```
-$ review-before-go
+$ quiz-before-push
 
 📊 Diff Analysis:
    Files: 2
@@ -96,5 +96,5 @@ Score: 2/2 (100%)
 ## Next Steps
 
 - Read the full [README.md](./README.md)
-- Configure quiz language: `review-before-go --language ko`
+- Configure quiz language: `quiz-before-push --language ko`
 - Set up [Claude Code integration](./claude-hook/README.md)

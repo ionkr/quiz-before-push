@@ -1,6 +1,6 @@
-# review-before-go
+# quiz-before-push
 
-[![npm version](https://img.shields.io/npm/v/review-before-go.svg)](https://www.npmjs.com/package/review-before-go)
+[![npm version](https://img.shields.io/npm/v/quiz-before-push.svg)](https://www.npmjs.com/package/quiz-before-push)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English Documentation](./README.md)**
@@ -9,7 +9,7 @@ AI가 생성한 코드를 커밋하기 전에 개발자가 이해했는지 확�
 
 ## 왜 필요한가요?
 
-Claude Code, GitHub Copilot, ChatGPT 같은 AI 코딩 어시스턴트를 사용할 때, 코드 변경사항을 완전히 이해하지 않고 수락하기 쉽습니다. **review-before-go**는 커밋하려는 변경사항에 대한 퀴즈를 생성하여 코드를 이해했는지 검증합니다.
+Claude Code, GitHub Copilot, ChatGPT 같은 AI 코딩 어시스턴트를 사용할 때, 코드 변경사항을 완전히 이해하지 않고 수락하기 쉽습니다. **quiz-before-push**는 커밋하려는 변경사항에 대한 퀴즈를 생성하여 코드를 이해했는지 검증합니다.
 
 - AI가 생성한 코드를 무분별하게 수락하는 것을 방지
 - 대화형 퀴즈를 통한 코드 이해도 향상
@@ -28,20 +28,20 @@ Claude Code, GitHub Copilot, ChatGPT 같은 AI 코딩 어시스턴트를 사용�
 
 ```bash
 # npm
-npm install -g review-before-go
+npm install -g quiz-before-push
 
 # pnpm
-pnpm add -g review-before-go
+pnpm add -g quiz-before-push
 
 # yarn
-yarn global add review-before-go
+yarn global add quiz-before-push
 ```
 
 ## 예시
 
 ```
 $ git push origin main
-Running review-before-go...
+Running quiz-before-push...
 📊 Diff Analysis: Files: 2 | Lines: +134/-54 | Complexity: MEDIUM | Questions: 3
 
 📝 Code Review Quiz
@@ -77,7 +77,7 @@ To github.com:user/repo.git  main -> main
 ### 1. 훅 설치
 
 ```bash
-review-before-go --install-hooks
+quiz-before-push --install-hooks
 git config quiz.enabled true
 ```
 
@@ -139,17 +139,17 @@ git 훅 없이 수동으로 퀴즈를 실행할 수도 있습니다:
 
 ```bash
 # 현재 변경사항에 대한 퀴즈 실행
-review-before-go
+quiz-before-push
 
 # 다른 프로바이더 사용
-review-before-go --provider openai      # OpenAI (기본값)
-review-before-go --provider anthropic   # Anthropic Claude
-review-before-go --provider ollama      # 로컬 Ollama
-review-before-go --provider claude-code # Claude Code CLI
+quiz-before-push --provider openai      # OpenAI (기본값)
+quiz-before-push --provider anthropic   # Anthropic Claude
+quiz-before-push --provider ollama      # 로컬 Ollama
+quiz-before-push --provider claude-code # Claude Code CLI
 
 # 특정 언어로 퀴즈 생성
-review-before-go --language ko  # 한국어
-review-before-go --language ja  # 일본어
+quiz-before-push --language ko  # 한국어
+quiz-before-push --language ja  # 일본어
 ```
 
 ## AI 에이전트 설정 가이드
@@ -157,7 +157,7 @@ review-before-go --language ja  # 일본어
 <details>
 <summary><strong>AI 에이전트(Claude Code, Cursor, Copilot 등)를 위한 안내</strong> - 클릭하여 펼치기</summary>
 
-> 사용자가 `review-before-go` 설정을 요청하면 다음 지침을 따르세요.
+> 사용자가 `quiz-before-push` 설정을 요청하면 다음 지침을 따르세요.
 
 ### 1단계: 사용자 설정 확인
 
@@ -183,7 +183,7 @@ review-before-go --language ja  # 일본어
 ### 2단계: 설치
 
 ```bash
-npm install -g review-before-go
+npm install -g quiz-before-push
 ```
 
 ### 3단계: 사용자 선택에 따라 설정
@@ -202,7 +202,7 @@ git config quiz.language <선택한-언어>
 ### 4단계: Git 훅 설정 (요청한 경우)
 
 ```bash
-review-before-go --install-hooks
+quiz-before-push --install-hooks
 git config quiz.enabled true
 ```
 
@@ -222,8 +222,8 @@ git config quiz.enabled true
   "hooks": {
     "post-edit": [
       {
-        "name": "review-before-go",
-        "command": "review-before-go --provider claude-code",
+        "name": "quiz-before-push",
+        "command": "quiz-before-push --provider claude-code",
         "timeout": 300000,
         "enabled": true
       }
@@ -273,14 +273,14 @@ export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API 키
 
 ```bash
 export OPENAI_API_KEY=sk-...
-review-before-go --provider openai --model gpt-4o
+quiz-before-push --provider openai --model gpt-4o
 ```
 
 ### Anthropic
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-review-before-go --provider anthropic --model claude-sonnet-4-20250514
+quiz-before-push --provider anthropic --model claude-sonnet-4-20250514
 ```
 
 ### Ollama (로컬)
@@ -289,7 +289,7 @@ API 키가 필요 없습니다. 완전히 로컬에서 실행됩니다.
 
 ```bash
 ollama serve  # Ollama 서버 시작
-review-before-go --provider ollama --model llama3.2
+quiz-before-push --provider ollama --model llama3.2
 ```
 
 ### Claude Code
@@ -297,7 +297,7 @@ review-before-go --provider ollama --model llama3.2
 Claude CLI를 사용합니다. 추가 설정이 필요 없습니다.
 
 ```bash
-review-before-go --provider claude-code
+quiz-before-push --provider claude-code
 ```
 
 ## 동작 방식
@@ -347,7 +347,7 @@ AI에 전송하기 전에 민감한 데이터가 자동으로 제거됩니다:
 ## 프로그래매틱 API
 
 ```typescript
-import { GitQuiz, createProvider, ComplexityAnalyzer } from 'review-before-go';
+import { GitQuiz, createProvider, ComplexityAnalyzer } from 'quiz-before-push';
 
 const quiz = new GitQuiz({
   provider: 'anthropic',

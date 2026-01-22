@@ -1,6 +1,6 @@
 # Claude Code Hook Setup
 
-This directory contains configuration files for integrating review-before-go with Claude Code's hook system.
+This directory contains configuration files for integrating quiz-before-push with Claude Code's hook system.
 
 ## Quick Setup
 
@@ -8,16 +8,16 @@ This directory contains configuration files for integrating review-before-go wit
 
    ```bash
    # macOS/Linux
-   cp -r claude-hook/* ~/.claude/hooks/review-before-go/
+   cp -r claude-hook/* ~/.claude/hooks/quiz-before-push/
 
    # Windows
-   copy claude-hook\* %USERPROFILE%\.claude\hooks\review-before-go\
+   copy claude-hook\* %USERPROFILE%\.claude\hooks\quiz-before-push\
    ```
 
 2. **Make the script executable (macOS/Linux):**
 
    ```bash
-   chmod +x ~/.claude/hooks/review-before-go/run-quiz.sh
+   chmod +x ~/.claude/hooks/quiz-before-push/run-quiz.sh
    ```
 
 3. **Add the hook to your Claude Code settings:**
@@ -29,9 +29,9 @@ This directory contains configuration files for integrating review-before-go wit
      "hooks": {
        "post-edit": [
          {
-           "name": "review-before-go",
+           "name": "quiz-before-push",
            "description": "Run code review quiz after editing files",
-           "command": "${HOME}/.claude/hooks/review-before-go/run-quiz.sh",
+           "command": "${HOME}/.claude/hooks/quiz-before-push/run-quiz.sh",
            "timeout": 300000,
            "enabled": true
          }
@@ -82,7 +82,7 @@ export GIT_QUIZ_ENABLED=false
 
 1. Check if the hook is enabled in Claude Code settings
 2. Verify the script is executable: `chmod +x run-quiz.sh`
-3. Check if review-before-go is installed: `review-before-go --version`
+3. Check if quiz-before-push is installed: `quiz-before-push --version`
 
 ### Timeout issues
 

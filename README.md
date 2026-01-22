@@ -1,6 +1,6 @@
-# review-before-go
+# quiz-before-push
 
-[![npm version](https://img.shields.io/npm/v/review-before-go.svg)](https://www.npmjs.com/package/review-before-go)
+[![npm version](https://img.shields.io/npm/v/quiz-before-push.svg)](https://www.npmjs.com/package/quiz-before-push)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[한국어 문서 (Korean)](./README.ko.md)**
@@ -9,7 +9,7 @@ AI-powered code review quiz that ensures developers understand AI-generated code
 
 ## Why?
 
-When using AI coding assistants like Claude Code, GitHub Copilot, or ChatGPT, it's easy to accept code changes without fully understanding them. **review-before-go** creates a quick quiz about the changes to verify you understand what's being committed.
+When using AI coding assistants like Claude Code, GitHub Copilot, or ChatGPT, it's easy to accept code changes without fully understanding them. **quiz-before-push** creates a quick quiz about the changes to verify you understand what's being committed.
 
 - Prevent blind acceptance of AI-generated code
 - Improve code comprehension through interactive quizzes
@@ -28,20 +28,20 @@ When using AI coding assistants like Claude Code, GitHub Copilot, or ChatGPT, it
 
 ```bash
 # npm
-npm install -g review-before-go
+npm install -g quiz-before-push
 
 # pnpm
-pnpm add -g review-before-go
+pnpm add -g quiz-before-push
 
 # yarn
-yarn global add review-before-go
+yarn global add quiz-before-push
 ```
 
 ## Example
 
 ```
 $ git push origin main
-Running review-before-go...
+Running quiz-before-push...
 📊 Diff Analysis: Files: 2 | Lines: +134/-54 | Complexity: MEDIUM | Questions: 3
 
 📝 Code Review Quiz
@@ -77,7 +77,7 @@ The primary use case is running as a **git pre-push hook** - the quiz runs autom
 ### 1. Install the Hook
 
 ```bash
-review-before-go --install-hooks
+quiz-before-push --install-hooks
 git config quiz.enabled true
 ```
 
@@ -141,18 +141,18 @@ You can also run the quiz manually without git hooks:
 
 ```bash
 # Run quiz on current changes
-review-before-go
+quiz-before-push
 
 # Use with different providers
-review-before-go --provider openai      # OpenAI (default)
-review-before-go --provider anthropic   # Anthropic Claude
-review-before-go --provider gemini      # Google Gemini
-review-before-go --provider ollama      # Local Ollama
-review-before-go --provider claude-code # Claude Code CLI
+quiz-before-push --provider openai      # OpenAI (default)
+quiz-before-push --provider anthropic   # Anthropic Claude
+quiz-before-push --provider gemini      # Google Gemini
+quiz-before-push --provider ollama      # Local Ollama
+quiz-before-push --provider claude-code # Claude Code CLI
 
 # Quiz in specific language
-review-before-go --language ko  # Korean
-review-before-go --language ja  # Japanese
+quiz-before-push --language ko  # Korean
+quiz-before-push --language ja  # Japanese
 ```
 
 ## AI Agent Setup Guide
@@ -160,7 +160,7 @@ review-before-go --language ja  # Japanese
 <details>
 <summary><strong>For AI Agents (Claude Code, Cursor, Copilot, etc.)</strong> - Click to expand</summary>
 
-> When a user asks you to set up `review-before-go`, follow these instructions.
+> When a user asks you to set up `quiz-before-push`, follow these instructions.
 
 ### Step 1: Ask User Preferences
 
@@ -188,7 +188,7 @@ Before installation, ask the user the following questions:
 ### Step 2: Installation
 
 ```bash
-npm install -g review-before-go
+npm install -g quiz-before-push
 ```
 
 ### Step 3: Configure Based on User Choices
@@ -207,7 +207,7 @@ git config quiz.language <chosen-language>
 ### Step 4: Git Hook Setup (if requested)
 
 ```bash
-review-before-go --install-hooks
+quiz-before-push --install-hooks
 git config quiz.enabled true
 ```
 
@@ -228,8 +228,8 @@ If the user is using Claude Code and wants real-time quizzes after edits, add to
   "hooks": {
     "post-edit": [
       {
-        "name": "review-before-go",
-        "command": "review-before-go --provider claude-code",
+        "name": "quiz-before-push",
+        "command": "quiz-before-push --provider claude-code",
         "timeout": 300000,
         "enabled": true
       }
@@ -280,21 +280,21 @@ export GEMINI_API_KEY=...           # Google Gemini API key
 
 ```bash
 export OPENAI_API_KEY=sk-...
-review-before-go --provider openai --model gpt-4o
+quiz-before-push --provider openai --model gpt-4o
 ```
 
 ### Anthropic
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
-review-before-go --provider anthropic --model claude-sonnet-4-20250514
+quiz-before-push --provider anthropic --model claude-sonnet-4-20250514
 ```
 
 ### Gemini
 
 ```bash
 export GEMINI_API_KEY=...
-review-before-go --provider gemini --model gemini-3-flash-preview
+quiz-before-push --provider gemini --model gemini-3-flash-preview
 ```
 
 ### Ollama (Local)
@@ -303,7 +303,7 @@ No API key required. Runs entirely locally.
 
 ```bash
 ollama serve  # Start Ollama server
-review-before-go --provider ollama --model llama3.2
+quiz-before-push --provider ollama --model llama3.2
 ```
 
 ### Claude Code
@@ -311,7 +311,7 @@ review-before-go --provider ollama --model llama3.2
 Uses the Claude CLI. No additional configuration needed.
 
 ```bash
-review-before-go --provider claude-code
+quiz-before-push --provider claude-code
 ```
 
 ## How It Works
@@ -361,7 +361,7 @@ See [docs/SECURITY.md](./docs/SECURITY.md) for details.
 ## Programmatic API
 
 ```typescript
-import { GitQuiz, createProvider, ComplexityAnalyzer } from 'review-before-go';
+import { GitQuiz, createProvider, ComplexityAnalyzer } from 'quiz-before-push';
 
 const quiz = new GitQuiz({
   provider: 'anthropic',

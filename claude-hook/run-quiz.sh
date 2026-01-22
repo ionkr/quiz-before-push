@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# review-before-go hook script for Claude Code
+# quiz-before-push hook script for Claude Code
 # This script is called by Claude Code's post-edit hook to run a code review quiz.
 #
 # Environment variables provided by Claude Code:
@@ -14,7 +14,7 @@ set -e
 # Check if quiz is enabled (from settings or environment)
 QUIZ_ENABLED="${GIT_QUIZ_ENABLED:-true}"
 if [ "$QUIZ_ENABLED" != "true" ]; then
-    echo "review-before-go: Skipping quiz (disabled)"
+    echo "quiz-before-push: Skipping quiz (disabled)"
     exit 0
 fi
 
@@ -26,14 +26,14 @@ if [ -n "$CLAUDE_EDIT_DIFF" ]; then
     CHANGED_LINES=$(echo "$CLAUDE_EDIT_DIFF" | grep -c '^[+-]' || echo "0")
 
     if [ "$CHANGED_LINES" -lt "$MIN_LINES" ]; then
-        echo "review-before-go: Skipping quiz (only $CHANGED_LINES lines changed, minimum is $MIN_LINES)"
+        echo "quiz-before-push: Skipping quiz (only $CHANGED_LINES lines changed, minimum is $MIN_LINES)"
         exit 0
     fi
 fi
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║                  review-before-go Code Review Quiz                    ║"
+echo "║                  quiz-before-push Code Review Quiz                    ║"
 echo "║       Ensuring you understand the AI-generated changes        ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo ""
@@ -50,13 +50,13 @@ if [ -n "$GIT_QUIZ_LANGUAGE" ]; then
 fi
 
 # Run the quiz
-if command -v review-before-go >/dev/null 2>&1; then
-    eval "review-before-go $OPTIONS"
+if command -v quiz-before-push >/dev/null 2>&1; then
+    eval "quiz-before-push $OPTIONS"
 elif command -v npx >/dev/null 2>&1; then
-    eval "npx review-before-go $OPTIONS"
+    eval "npx quiz-before-push $OPTIONS"
 else
-    echo "Error: review-before-go is not installed."
-    echo "Install with: npm install -g review-before-go"
+    echo "Error: quiz-before-push is not installed."
+    echo "Install with: npm install -g quiz-before-push"
     exit 1
 fi
 

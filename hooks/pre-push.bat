@@ -1,5 +1,5 @@
 @echo off
-REM review-before-go pre-push hook for Windows
+REM quiz-before-push pre-push hook for Windows
 REM This hook runs before git push to ensure the developer understands the code changes.
 REM
 REM To install this hook:
@@ -7,7 +7,7 @@ REM   copy hooks\pre-push.bat .git\hooks\pre-push
 REM   git config quiz.enabled true
 REM
 REM Or use the CLI:
-REM   review-before-go --install-hooks
+REM   quiz-before-push --install-hooks
 REM   git config quiz.enabled true
 REM
 REM Configuration (via git config):
@@ -28,7 +28,7 @@ if not "%QUIZ_ENABLED%"=="true" (
 
 echo.
 echo ===============================================================
-echo                    review-before-go Pre-Push Hook
+echo                    quiz-before-push Pre-Push Hook
 echo   Ensuring you understand the code before pushing to remote
 echo ===============================================================
 echo.
@@ -51,20 +51,20 @@ if defined OLLAMA_URL set OPTIONS=!OPTIONS! --ollama-url !OLLAMA_URL!
 for /f "tokens=*" %%i in ('git config --get quiz.language 2^>nul') do set LANGUAGE=%%i
 if defined LANGUAGE set OPTIONS=!OPTIONS! --language !LANGUAGE!
 
-REM Try to run review-before-go
-where review-before-go >nul 2>&1
+REM Try to run quiz-before-push
+where quiz-before-push >nul 2>&1
 if %errorlevel% equ 0 (
-    review-before-go %OPTIONS%
+    quiz-before-push %OPTIONS%
     set EXIT_CODE=%errorlevel%
 ) else (
     where npx >nul 2>&1
     if %errorlevel% equ 0 (
-        npx review-before-go %OPTIONS%
+        npx quiz-before-push %OPTIONS%
         set EXIT_CODE=%errorlevel%
     ) else (
-        echo Error: review-before-go is not installed.
-        echo Install with: npm install -g review-before-go
-        echo Or run: npx review-before-go
+        echo Error: quiz-before-push is not installed.
+        echo Install with: npm install -g quiz-before-push
+        echo Or run: npx quiz-before-push
         exit /b 1
     )
 )

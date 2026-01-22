@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# review-before-go pre-push hook
+# quiz-before-push pre-push hook
 # This hook runs before git push to ensure the developer understands the code changes.
 #
 # To install this hook:
@@ -9,7 +9,7 @@
 #   git config quiz.enabled true
 #
 # Or use the CLI:
-#   review-before-go --install-hooks
+#   quiz-before-push --install-hooks
 #   git config quiz.enabled true
 #
 # Configuration (via git config):
@@ -40,7 +40,7 @@ fi
 
 echo ""
 echo "╔═══════════════════════════════════════════════════════════════╗"
-echo "║                    review-before-go Pre-Push Hook                     ║"
+echo "║                    quiz-before-push Pre-Push Hook                     ║"
 echo "║  Ensuring you understand the code before pushing to remote    ║"
 echo "╚═══════════════════════════════════════════════════════════════╝"
 echo ""
@@ -73,19 +73,19 @@ if [ -n "$LANGUAGE" ]; then
     OPTIONS="$OPTIONS --language $LANGUAGE"
 fi
 
-# Try to run review-before-go
-if command -v review-before-go >/dev/null 2>&1; then
-    # review-before-go is installed globally
-    eval "review-before-go --mode pre-push $OPTIONS"
+# Try to run quiz-before-push
+if command -v quiz-before-push >/dev/null 2>&1; then
+    # quiz-before-push is installed globally
+    eval "quiz-before-push --mode pre-push $OPTIONS"
     EXIT_CODE=$?
 elif command -v npx >/dev/null 2>&1; then
     # Fall back to npx
-    eval "npx review-before-go --mode pre-push $OPTIONS"
+    eval "npx quiz-before-push --mode pre-push $OPTIONS"
     EXIT_CODE=$?
 else
-    echo "Error: review-before-go is not installed."
-    echo "Install with: npm install -g review-before-go"
-    echo "Or run: npx review-before-go"
+    echo "Error: quiz-before-push is not installed."
+    echo "Install with: npm install -g quiz-before-push"
+    echo "Or run: npx quiz-before-push"
     exit 1
 fi
 
