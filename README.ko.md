@@ -37,15 +37,76 @@ pnpm add -g review-before-go
 yarn global add review-before-go
 ```
 
-## 빠른 시작
+## Git 훅 설정 (권장)
+
+주요 사용 사례는 **git pre-push 훅**으로 실행하는 것입니다 - `git push` 전에 자동으로 퀴즈가 실행됩니다.
+
+### 1. 훅 설치
+
+```bash
+review-before-go --install-hooks
+git config quiz.enabled true
+```
+
+### 2. 프로바이더 설정
+
+AI 프로바이더를 선택하고 필요한 API 키를 설정하세요:
+
+```bash
+# OpenAI (기본값)
+export OPENAI_API_KEY=sk-...
+git config quiz.provider openai
+
+# Anthropic
+export ANTHROPIC_API_KEY=sk-ant-...
+git config quiz.provider anthropic
+
+# Ollama (로컬, API 키 불필요)
+ollama serve
+git config quiz.provider ollama
+
+# Claude Code (설정 불필요)
+git config quiz.provider claude-code
+```
+
+### 3. 옵션 설정 (선택사항)
+
+```bash
+git config quiz.model gpt-4o          # 특정 모델 지정
+git config quiz.language ko           # 퀴즈 언어 설정 (en, ko, ja 등)
+```
+
+### 4. 코드 푸시
+
+이제 `git push`를 실행하면 자동으로 퀴즈가 실행됩니다:
+
+```bash
+git push  # 푸시 전 퀴즈 실행
+```
+
+### 퀴즈 건너뛰기
+
+일시적으로 퀴즈를 건너뛰어야 하는 경우:
+
+```bash
+# 단일 푸시에서 건너뛰기
+git push --no-verify
+
+# 퀴즈 임시 비활성화
+git config quiz.enabled false
+git push
+git config quiz.enabled true
+```
+
+> **주의**: 퀴즈를 건너뛰면 코드 리뷰 검증의 목적이 무효화됩니다. 꼭 필요한 경우에만 사용하세요.
+
+## 독립 실행형 CLI 사용
+
+git 훅 없이 수동으로 퀴즈를 실행할 수도 있습니다:
 
 ```bash
 # 현재 변경사항에 대한 퀴즈 실행
 review-before-go
-
-# git pre-push 훅으로 설치
-review-before-go --install-hooks
-git config quiz.enabled true
 
 # 다른 프로바이더 사용
 review-before-go --provider openai      # OpenAI (기본값)
@@ -164,12 +225,7 @@ git config quiz.enabled true
 
 ### Git Config
 
-```bash
-git config quiz.enabled true        # 퀴즈 훅 활성화
-git config quiz.provider anthropic  # 프로바이더 설정
-git config quiz.model claude-sonnet-4-20250514  # 모델 설정
-git config quiz.language ko         # 언어 설정
-```
+git config를 통한 설정 방법은 [Git 훅 설정](#git-훅-설정-권장) 섹션을 참조하세요.
 
 ### 환경 변수
 
@@ -177,22 +233,6 @@ git config quiz.language ko         # 언어 설정
 export OPENAI_API_KEY=sk-...        # OpenAI API 키
 export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API 키
 ```
-
-### 퀴즈 건너뛰기
-
-일시적으로 퀴즈를 건너뛰어야 하는 경우:
-
-```bash
-# 단일 푸시에서 건너뛰기 (모든 git 훅 우회)
-git push --no-verify
-
-# 퀴즈 임시 비활성화
-git config quiz.enabled false
-git push
-git config quiz.enabled true
-```
-
-> **주의**: 퀴즈를 건너뛰면 코드 리뷰 검증의 목적이 무효화됩니다. 꼭 필요한 경우에만 사용하세요.
 
 ## 프로바이더
 

@@ -37,15 +37,76 @@ pnpm add -g review-before-go
 yarn global add review-before-go
 ```
 
-## Quick Start
+## Git Hook Setup (Recommended)
+
+The primary use case is running as a **git pre-push hook** - the quiz runs automatically before every `git push`.
+
+### 1. Install the Hook
+
+```bash
+review-before-go --install-hooks
+git config quiz.enabled true
+```
+
+### 2. Configure Your Provider
+
+Choose an AI provider and set the required API key:
+
+```bash
+# OpenAI (default)
+export OPENAI_API_KEY=sk-...
+git config quiz.provider openai
+
+# Anthropic
+export ANTHROPIC_API_KEY=sk-ant-...
+git config quiz.provider anthropic
+
+# Ollama (local, no API key needed)
+ollama serve
+git config quiz.provider ollama
+
+# Claude Code (no setup needed)
+git config quiz.provider claude-code
+```
+
+### 3. Configure Options (Optional)
+
+```bash
+git config quiz.model gpt-4o          # Set specific model
+git config quiz.language ko           # Set quiz language (en, ko, ja, etc.)
+```
+
+### 4. Push Your Code
+
+Now when you run `git push`, the quiz will automatically run:
+
+```bash
+git push  # Quiz runs before push
+```
+
+### Skipping the Quiz
+
+If you need to bypass the quiz temporarily:
+
+```bash
+# Skip for a single push
+git push --no-verify
+
+# Disable quiz temporarily
+git config quiz.enabled false
+git push
+git config quiz.enabled true
+```
+
+> **Warning**: Skipping the quiz defeats the purpose of code review verification. Use sparingly.
+
+## Standalone CLI Usage
+
+You can also run the quiz manually without git hooks:
 
 ```bash
 # Run quiz on current changes
 review-before-go
-
-# Install as git pre-push hook
-review-before-go --install-hooks
-git config quiz.enabled true
 
 # Use with different providers
 review-before-go --provider openai      # OpenAI (default)
@@ -164,12 +225,7 @@ If the user is using Claude Code and wants real-time quizzes after edits, add to
 
 ### Git Config
 
-```bash
-git config quiz.enabled true        # Enable quiz hook
-git config quiz.provider anthropic  # Set provider
-git config quiz.model claude-sonnet-4-20250514  # Set model
-git config quiz.language ko         # Set language
-```
+See [Git Hook Setup](#git-hook-setup-recommended) for details on configuring via git config.
 
 ### Environment Variables
 
@@ -177,22 +233,6 @@ git config quiz.language ko         # Set language
 export OPENAI_API_KEY=sk-...        # OpenAI API key
 export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API key
 ```
-
-### Skipping the Quiz
-
-If you need to bypass the quiz temporarily:
-
-```bash
-# Skip for a single push (bypasses all git hooks)
-git push --no-verify
-
-# Disable quiz temporarily
-git config quiz.enabled false
-git push
-git config quiz.enabled true
-```
-
-> **Warning**: Skipping the quiz defeats the purpose of code review verification. Use sparingly.
 
 ## Providers
 
