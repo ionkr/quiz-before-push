@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/claude-code/main/schemas/hooks.json",
+  "hooks": {
+    "post-edit": [
+      {
+        "name": "review-before-go",
+        "description": "Run code review quiz after editing files",
+        "command": "${CLAUDE_HOOK_DIR}/run-quiz.sh",
+        "timeout": 300000,
+        "enabled": true,
+        "conditions": {
+          "filePatterns": ["**/*.ts", "**/*.js", "**/*.tsx", "**/*.jsx", "**/*.py", "**/*.go", "**/*.rs"],
+          "excludePatterns": ["**/node_modules/**", "**/dist/**", "**/*.test.*", "**/*.spec.*"]
+        }
+      }
+    ]
+  },
+  "settings": {
+    "quiz": {
+      "provider": "claude-code",
+      "language": "auto",
+      "minChangedLines": 10,
+      "enabled": true
+    }
+  }
+}

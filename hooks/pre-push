@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# review-before-go pre-push hook
+# This hook runs before git push to ensure the developer understands the code changes.
+#
+# To install this hook:
+#   cp hooks/pre-push .git/hooks/pre-push
+#   chmod +x .git/hooks/pre-push
+#   git config quiz.enabled true
+#
+# Or use the CLI:
+#   review-before-go --install-hooks
+#   git config quiz.enabled true
+#
+# Configuration (via git config):
+#   quiz.enabled    - Set to "true" to enable the quiz (required)
+#   quiz.provider   - AI provider: openai, ollama, claude-code (default: openai)
+#   quiz.model      - Model to use (provider-specific)
+#   quiz.apiKey     - API key for OpenAI (or use OPENAI_API_KEY env var)
+#   quiz.ollamaUrl  - Ollama server URL (default: http://localhost:11434)
+#   quiz.language   - Language for quiz questions (e.g., en, ko, ja)
+#
+
+# Check if quiz is enabled
+QUIZ_ENABLED=$(git config --get quiz.enabled)
+if [ "$QUIZ_ENABLED" != "true" ]; then
+    # Quiz not enabled, allow push
+    exit 0
+fi
+
+# Check if there are staged changes to quiz
+if git diff --cached --quiet; then
+    # No staged changes, check if there are commits to push
+    COMMITS_TO_PUSH=$(git log @{u}.. --oneline 2>/dev/null | wc -l)
+    if [ "$COMMITS_TO_PUSH" -eq 0 ]; then
+        echo "No changes to push. Skipping quiz."
+        exit 0
+    fi
+fi
+
+echo ""
+echo "╔═══════════════════════════════════════════════════════════════╗"
+echo "║                    review-before-go Pre-Push Hook                     ║"
+echo "║  Ensuring you understand the code before pushing to remote    ║"
+echo "╚═══════════════════════════════════════════════════════════════╝"
+echo ""
+
+# Build options from git config
+OPTIONS=""
+
+PROVIDER=$(git config --get quiz.provider)
+if [ -n "$PROVIDER" ]; then
+    OPTIONS="$OPTIONS --provider $PROVIDER"
+fi
+
+MODEL=$(git config --get quiz.model)
+if [ -n "$MODEL" ]; then
+    OPTIONS="$OPTIONS --model $MODEL"
+fi
+
+API_KEY=$(git config --get quiz.apiKey)
+if [ -n "$API_KEY" ]; then
+    OPTIONS="$OPTIONS --api-key $API_KEY"
+fi
+
+OLLAMA_URL=$(git config --get quiz.ollamaUrl)
+if [ -n "$OLLAMA_URL" ]; then
+    OPTIONS="$OPTIONS --ollama-url $OLLAMA_URL"
+fi
+
+LANGUAGE=$(git config --get quiz.language)
+if [ -n "$LANGUAGE" ]; then
+    OPTIONS="$OPTIONS --language $LANGUAGE"
+fi
+
+# Try to run review-before-go
+if command -v review-before-go >/dev/null 2>&1; then
+    # review-before-go is installed globally
+    eval "review-before-go $OPTIONS"
+    EXIT_CODE=$?
+elif command -v npx >/dev/null 2>&1; then
+    # Fall back to npx
+    eval "npx review-before-go $OPTIONS"
+    EXIT_CODE=$?
+else
+    echo "Error: review-before-go is not installed."
+    echo "Install with: npm install -g review-before-go"
+    echo "Or run: npx review-before-go"
+    exit 1
+fi
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "╔═══════════════════════════════════════════════════════════════╗"
+    echo "║                     Push Blocked                              ║"
+    echo "║  Please review the code changes and try again.                ║"
+    echo "╚═══════════════════════════════════════════════════════════════╝"
+    echo ""
+    echo "To skip the quiz (not recommended):"
+    echo "  git push --no-verify"
+    echo ""
+fi
+
+exit $EXIT_CODE
