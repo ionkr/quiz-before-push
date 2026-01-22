@@ -17,7 +17,7 @@ When using AI coding assistants like Claude Code, GitHub Copilot, or ChatGPT, it
 
 ## Features
 
-- **Multiple AI Providers**: OpenAI, Anthropic, Ollama (local), Claude Code
+- **Multiple AI Providers**: OpenAI, Anthropic, Gemini, Ollama (local), Claude Code
 - **Adaptive Difficulty**: Quiz complexity matches code change complexity
 - **Multi-language Support**: Quiz in any language (auto-detected or configured)
 - **Git Integration**: Works as a pre-push hook or standalone CLI
@@ -94,6 +94,10 @@ git config quiz.provider openai
 export ANTHROPIC_API_KEY=sk-ant-...
 git config quiz.provider anthropic
 
+# Gemini
+export GEMINI_API_KEY=...
+git config quiz.provider gemini
+
 # Ollama (local, no API key needed)
 ollama serve
 git config quiz.provider ollama
@@ -142,6 +146,7 @@ review-before-go
 # Use with different providers
 review-before-go --provider openai      # OpenAI (default)
 review-before-go --provider anthropic   # Anthropic Claude
+review-before-go --provider gemini      # Google Gemini
 review-before-go --provider ollama      # Local Ollama
 review-before-go --provider claude-code # Claude Code CLI
 
@@ -164,12 +169,14 @@ Before installation, ask the user the following questions:
 1. **Which AI provider would you like to use for the quiz?**
    - `openai` - OpenAI API (requires OPENAI_API_KEY)
    - `anthropic` - Anthropic API (requires ANTHROPIC_API_KEY)
+   - `gemini` - Google Gemini API (requires GEMINI_API_KEY)
    - `ollama` - Local Ollama (no API key, runs locally)
    - `claude-code` - Claude Code CLI (no additional setup)
 
 2. **Which model do you want to use?** (Optional, provider defaults will be used if not specified)
    - OpenAI: `gpt-4o`, `gpt-4o-mini`, etc.
    - Anthropic: `claude-sonnet-4-20250514`, `claude-opus-4-20250514`, etc.
+   - Gemini: `gemini-3-flash-preview`, `gemini-2.5-flash`, etc.
    - Ollama: `llama3.2`, `codellama`, etc.
 
 3. **What language should the quiz be in?** (Optional)
@@ -208,6 +215,7 @@ git config quiz.enabled true
 
 - **OpenAI**: Verify `OPENAI_API_KEY` environment variable is set
 - **Anthropic**: Verify `ANTHROPIC_API_KEY` environment variable is set
+- **Gemini**: Verify `GEMINI_API_KEY` environment variable is set
 - **Ollama**: Verify Ollama is running (`ollama serve`)
 - **Claude Code**: No verification needed
 
@@ -238,7 +246,7 @@ If the user is using Claude Code and wants real-time quizzes after edits, add to
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `-p, --provider <provider>` | AI provider (openai, anthropic, ollama, claude-code) | `openai` |
+| `-p, --provider <provider>` | AI provider (openai, anthropic, gemini, ollama, claude-code) | `openai` |
 | `-m, --model <model>` | Model to use | Provider default |
 | `-k, --api-key <key>` | API key | `$OPENAI_API_KEY` or `$ANTHROPIC_API_KEY` |
 | `-u, --ollama-url <url>` | Ollama server URL | `http://localhost:11434` |
@@ -263,6 +271,7 @@ See [Git Hook Setup](#git-hook-setup-recommended) for details on configuring via
 ```bash
 export OPENAI_API_KEY=sk-...        # OpenAI API key
 export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API key
+export GEMINI_API_KEY=...           # Google Gemini API key
 ```
 
 ## Providers
@@ -279,6 +288,13 @@ review-before-go --provider openai --model gpt-4o
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 review-before-go --provider anthropic --model claude-sonnet-4-20250514
+```
+
+### Gemini
+
+```bash
+export GEMINI_API_KEY=...
+review-before-go --provider gemini --model gemini-3-flash-preview
 ```
 
 ### Ollama (Local)

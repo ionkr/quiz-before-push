@@ -10,7 +10,7 @@ import { GitQuiz } from './index.js';
 const program = new Command();
 
 interface GitQuizCliOptions {
-  provider: 'openai' | 'ollama' | 'claude-code' | 'anthropic';
+  provider: 'openai' | 'ollama' | 'claude-code' | 'anthropic' | 'gemini';
   model?: string;
   apiKey?: string;
   ollamaUrl?: string;
@@ -115,7 +115,7 @@ program
   .version('0.1.0')
   .option(
     '-p, --provider <provider>',
-    'AI provider to use (openai, ollama, claude-code, anthropic)'
+    'AI provider to use (openai, ollama, claude-code, anthropic, gemini)'
   )
   .option('-m, --model <model>', 'Model to use for the provider')
   .option('-k, --api-key <key>', 'API key (or set OPENAI_API_KEY/ANTHROPIC_API_KEY env var)')
@@ -138,6 +138,7 @@ program
     const provider = options.provider || gitConfigDefaults.provider || 'openai';
     const getDefaultApiKey = (p: string) => {
       if (p === 'anthropic') return process.env.ANTHROPIC_API_KEY;
+      if (p === 'gemini') return process.env.GEMINI_API_KEY;
       return process.env.OPENAI_API_KEY;
     };
     const finalOptions: GitQuizCliOptions = {
@@ -151,7 +152,7 @@ program
     };
 
     // Validate provider
-    const validProviders = ['openai', 'ollama', 'claude-code', 'anthropic'];
+    const validProviders = ['openai', 'ollama', 'claude-code', 'anthropic', 'gemini'];
     if (!validProviders.includes(finalOptions.provider)) {
       console.error(chalk.red(`❌ Invalid provider: ${finalOptions.provider}`));
       console.error(chalk.gray(`   Valid providers: ${validProviders.join(', ')}`));
@@ -174,7 +175,7 @@ program
 
     // Run the quiz
     const gitQuiz = new GitQuiz({
-      provider: finalOptions.provider as 'openai' | 'ollama' | 'claude-code' | 'anthropic',
+      provider: finalOptions.provider as 'openai' | 'ollama' | 'claude-code' | 'anthropic' | 'gemini',
       model: finalOptions.model,
       apiKey: finalOptions.apiKey,
       ollamaUrl: finalOptions.ollamaUrl,

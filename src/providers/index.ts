@@ -3,9 +3,10 @@ import { OpenAIProvider } from './openai.js';
 import { OllamaProvider } from './ollama.js';
 import { ClaudeCodeProvider } from './claude-code.js';
 import { AnthropicProvider } from './anthropic.js';
+import { GeminiProvider } from './gemini.js';
 
 export interface ProviderOptions {
-  provider: 'openai' | 'ollama' | 'claude-code' | 'anthropic';
+  provider: 'openai' | 'ollama' | 'claude-code' | 'anthropic' | 'gemini';
   model?: string;
   apiKey?: string;
   ollamaUrl?: string;
@@ -41,6 +42,13 @@ export function createProvider(options: ProviderOptions): AIProvider {
         language: options.language,
       });
 
+    case 'gemini':
+      return new GeminiProvider({
+        model: options.model,
+        apiKey: options.apiKey,
+        language: options.language,
+      });
+
     default: {
       const exhaustiveCheck: never = options.provider;
       throw new Error(`Unknown provider: ${exhaustiveCheck}`);
@@ -49,4 +57,4 @@ export function createProvider(options: ProviderOptions): AIProvider {
 }
 
 export type { AIProvider, ProviderOptions as ProviderConfig };
-export { OpenAIProvider, OllamaProvider, ClaudeCodeProvider, AnthropicProvider };
+export { OpenAIProvider, OllamaProvider, ClaudeCodeProvider, AnthropicProvider, GeminiProvider };
