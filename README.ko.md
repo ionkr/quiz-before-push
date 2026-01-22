@@ -60,34 +60,66 @@ review-before-go --language ja  # 일본어
 
 ## AI 에이전트 설정 가이드
 
-AI 에이전트(Claude Code, Cursor, GitHub Copilot 등)에게 이 패키지 설정을 요청할 때 다음 지침을 제공하세요:
+> **AI 에이전트(Claude Code, Cursor, Copilot 등)를 위한 안내:**
+> 사용자가 `review-before-go` 설정을 요청하면 다음 지침을 따르세요.
 
-### AI 에이전트용: 설정 지침
+### 1단계: 사용자 설정 확인
 
+설치 전에 사용자에게 다음 질문을 하세요:
+
+1. **퀴즈에 어떤 AI 프로바이더를 사용하시겠습니까?**
+   - `openai` - OpenAI API (OPENAI_API_KEY 필요)
+   - `anthropic` - Anthropic API (ANTHROPIC_API_KEY 필요)
+   - `ollama` - 로컬 Ollama (API 키 불필요, 로컬 실행)
+   - `claude-code` - Claude Code CLI (추가 설정 불필요)
+
+2. **어떤 모델을 사용하시겠습니까?** (선택사항, 미지정 시 프로바이더 기본값 사용)
+   - OpenAI: `gpt-4o`, `gpt-4o-mini` 등
+   - Anthropic: `claude-sonnet-4-20250514`, `claude-opus-4-20250514` 등
+   - Ollama: `llama3.2`, `codellama` 등
+
+3. **퀴즈를 어떤 언어로 출제할까요?** (선택사항)
+   - `en`, `ko`, `ja` 등 (미지정 시 자동 감지)
+
+4. **git pre-push 훅을 설치할까요?**
+   - 예를 선택하면 `git push` 전에 자동으로 퀴즈가 실행됩니다
+
+### 2단계: 설치
+
+```bash
+npm install -g review-before-go
 ```
-이 프로젝트에 review-before-go를 설정해주세요:
 
-1. 전역 설치: npm install -g review-before-go
+### 3단계: 사용자 선택에 따라 설정
 
-2. git 훅 설치: review-before-go --install-hooks
+```bash
+# 프로바이더 설정
+git config quiz.provider <선택한-프로바이더>
 
-3. 퀴즈 활성화: git config quiz.enabled true
+# 모델 설정 (지정한 경우)
+git config quiz.model <선택한-모델>
 
-4. 프로바이더 설정 (하나 선택):
-   - OpenAI 사용 시: OPENAI_API_KEY 환경 변수 설정 필요
-   - Anthropic 사용 시: ANTHROPIC_API_KEY 환경 변수 설정 필요
-   - Ollama 사용 시: Ollama가 로컬에서 실행 중이어야 함 (ollama serve)
-   - Claude Code 사용 시: 추가 설정 불필요
-
-5. 선택적 설정:
-   git config quiz.provider <openai|anthropic|ollama|claude-code>
-   git config quiz.language <en|ko|ja|etc>
-   git config quiz.model <모델명>
+# 언어 설정 (지정한 경우)
+git config quiz.language <선택한-언어>
 ```
 
-### Claude Code 통합
+### 4단계: Git 훅 설정 (요청한 경우)
 
-Claude Code 사용자는 `~/.claude/settings.json`에 다음을 추가하세요:
+```bash
+review-before-go --install-hooks
+git config quiz.enabled true
+```
+
+### 5단계: API 키 확인 (필요한 경우)
+
+- **OpenAI**: `OPENAI_API_KEY` 환경 변수가 설정되어 있는지 확인
+- **Anthropic**: `ANTHROPIC_API_KEY` 환경 변수가 설정되어 있는지 확인
+- **Ollama**: Ollama가 실행 중인지 확인 (`ollama serve`)
+- **Claude Code**: 확인 불필요
+
+### Claude Code Post-Edit 훅 (선택사항)
+
+사용자가 Claude Code를 사용하고 편집 후 실시간 퀴즈를 원한다면, `~/.claude/settings.json`에 추가하세요:
 
 ```json
 {

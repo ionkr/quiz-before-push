@@ -60,34 +60,66 @@ review-before-go --language ja  # Japanese
 
 ## AI Agent Setup Guide
 
-If you're asking an AI agent (like Claude Code, Cursor, or GitHub Copilot) to set up this package for you, provide the following instructions:
+> **For AI Agents (Claude Code, Cursor, Copilot, etc.):**
+> When a user asks you to set up `review-before-go`, follow these instructions.
 
-### For AI Agents: Setup Instructions
+### Step 1: Ask User Preferences
 
+Before installation, ask the user the following questions:
+
+1. **Which AI provider would you like to use for the quiz?**
+   - `openai` - OpenAI API (requires OPENAI_API_KEY)
+   - `anthropic` - Anthropic API (requires ANTHROPIC_API_KEY)
+   - `ollama` - Local Ollama (no API key, runs locally)
+   - `claude-code` - Claude Code CLI (no additional setup)
+
+2. **Which model do you want to use?** (Optional, provider defaults will be used if not specified)
+   - OpenAI: `gpt-4o`, `gpt-4o-mini`, etc.
+   - Anthropic: `claude-sonnet-4-20250514`, `claude-opus-4-20250514`, etc.
+   - Ollama: `llama3.2`, `codellama`, etc.
+
+3. **What language should the quiz be in?** (Optional)
+   - `en`, `ko`, `ja`, etc. (auto-detect if not specified)
+
+4. **Do you want to install a git pre-push hook?**
+   - If yes, the quiz will run automatically before every `git push`
+
+### Step 2: Installation
+
+```bash
+npm install -g review-before-go
 ```
-Please set up review-before-go for this project:
 
-1. Install globally: npm install -g review-before-go
+### Step 3: Configure Based on User Choices
 
-2. Install git hooks: review-before-go --install-hooks
+```bash
+# Set the provider
+git config quiz.provider <chosen-provider>
 
-3. Enable the quiz: git config quiz.enabled true
+# Set the model (if specified)
+git config quiz.model <chosen-model>
 
-4. Configure the provider (choose one):
-   - For OpenAI: Ensure OPENAI_API_KEY environment variable is set
-   - For Anthropic: Ensure ANTHROPIC_API_KEY environment variable is set
-   - For Ollama: Ensure Ollama is running locally (ollama serve)
-   - For Claude Code: No additional setup needed
-
-5. Optional configuration:
-   git config quiz.provider <openai|anthropic|ollama|claude-code>
-   git config quiz.language <en|ko|ja|etc>
-   git config quiz.model <model-name>
+# Set the language (if specified)
+git config quiz.language <chosen-language>
 ```
 
-### Claude Code Integration
+### Step 4: Git Hook Setup (if requested)
 
-For Claude Code users, add to `~/.claude/settings.json`:
+```bash
+review-before-go --install-hooks
+git config quiz.enabled true
+```
+
+### Step 5: Verify API Key (if needed)
+
+- **OpenAI**: Verify `OPENAI_API_KEY` environment variable is set
+- **Anthropic**: Verify `ANTHROPIC_API_KEY` environment variable is set
+- **Ollama**: Verify Ollama is running (`ollama serve`)
+- **Claude Code**: No verification needed
+
+### Claude Code Post-Edit Hook (Optional)
+
+If the user is using Claude Code and wants real-time quizzes after edits, add to `~/.claude/settings.json`:
 
 ```json
 {
