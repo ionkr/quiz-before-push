@@ -115,12 +115,11 @@ program
   .version('0.1.0')
   .option(
     '-p, --provider <provider>',
-    'AI provider to use (openai, ollama, claude-code, anthropic)',
-    'openai'
+    'AI provider to use (openai, ollama, claude-code, anthropic)'
   )
   .option('-m, --model <model>', 'Model to use for the provider')
   .option('-k, --api-key <key>', 'API key (or set OPENAI_API_KEY/ANTHROPIC_API_KEY env var)')
-  .option('-u, --ollama-url <url>', 'Ollama server URL', 'http://localhost:11434')
+  .option('-u, --ollama-url <url>', 'Ollama server URL')
   .option('-l, --language <lang>', 'Language for quiz questions (e.g., en, ko, ja)')
   .option('--mode <mode>', 'Diff mode: default (staged+unstaged) or pre-push (commits to push)', 'default')
   .option('-s, --skip-quiz', 'Skip the quiz (dangerous, not recommended)')
