@@ -60,7 +60,9 @@ review-before-go --language ja  # 일본어
 
 ## AI 에이전트 설정 가이드
 
-> **AI 에이전트(Claude Code, Cursor, Copilot 등)를 위한 안내:**
+<details>
+<summary><strong>AI 에이전트(Claude Code, Cursor, Copilot 등)를 위한 안내</strong> - 클릭하여 펼치기</summary>
+
 > 사용자가 `review-before-go` 설정을 요청하면 다음 지침을 따르세요.
 
 ### 1단계: 사용자 설정 확인
@@ -136,6 +138,8 @@ git config quiz.enabled true
 }
 ```
 
+</details>
+
 ## 설정
 
 ### CLI 옵션
@@ -148,7 +152,7 @@ git config quiz.enabled true
 | `-u, --ollama-url <url>` | Ollama 서버 URL | `http://localhost:11434` |
 | `-l, --language <lang>` | 퀴즈 언어 (en, ko, ja 등) | 자동 감지 |
 | `--mode <mode>` | Diff 모드: `default` 또는 `pre-push` | `default` |
-| `-s, --skip-quiz` | 퀴즈 건너뛰기 (권장하지 않음) | `false` |
+| `-s, --skip-quiz` | 퀴즈 건너뛰기 | `false` |
 | `--install-hooks` | git pre-push 훅 설치 | - |
 
 ### Diff 모드
@@ -173,6 +177,22 @@ git config quiz.language ko         # 언어 설정
 export OPENAI_API_KEY=sk-...        # OpenAI API 키
 export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API 키
 ```
+
+### 퀴즈 건너뛰기
+
+일시적으로 퀴즈를 건너뛰어야 하는 경우:
+
+```bash
+# 단일 푸시에서 건너뛰기 (모든 git 훅 우회)
+git push --no-verify
+
+# 퀴즈 임시 비활성화
+git config quiz.enabled false
+git push
+git config quiz.enabled true
+```
+
+> **주의**: 퀴즈를 건너뛰면 코드 리뷰 검증의 목적이 무효화됩니다. 꼭 필요한 경우에만 사용하세요.
 
 ## 프로바이더
 

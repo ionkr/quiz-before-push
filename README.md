@@ -60,7 +60,9 @@ review-before-go --language ja  # Japanese
 
 ## AI Agent Setup Guide
 
-> **For AI Agents (Claude Code, Cursor, Copilot, etc.):**
+<details>
+<summary><strong>For AI Agents (Claude Code, Cursor, Copilot, etc.)</strong> - Click to expand</summary>
+
 > When a user asks you to set up `review-before-go`, follow these instructions.
 
 ### Step 1: Ask User Preferences
@@ -136,6 +138,8 @@ If the user is using Claude Code and wants real-time quizzes after edits, add to
 }
 ```
 
+</details>
+
 ## Configuration
 
 ### CLI Options
@@ -148,7 +152,7 @@ If the user is using Claude Code and wants real-time quizzes after edits, add to
 | `-u, --ollama-url <url>` | Ollama server URL | `http://localhost:11434` |
 | `-l, --language <lang>` | Quiz language (en, ko, ja, etc.) | Auto-detect |
 | `--mode <mode>` | Diff mode: `default` or `pre-push` | `default` |
-| `-s, --skip-quiz` | Skip quiz (not recommended) | `false` |
+| `-s, --skip-quiz` | Skip quiz | `false` |
 | `--install-hooks` | Install git pre-push hook | - |
 
 ### Diff Modes
@@ -173,6 +177,22 @@ git config quiz.language ko         # Set language
 export OPENAI_API_KEY=sk-...        # OpenAI API key
 export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API key
 ```
+
+### Skipping the Quiz
+
+If you need to bypass the quiz temporarily:
+
+```bash
+# Skip for a single push (bypasses all git hooks)
+git push --no-verify
+
+# Disable quiz temporarily
+git config quiz.enabled false
+git push
+git config quiz.enabled true
+```
+
+> **Warning**: Skipping the quiz defeats the purpose of code review verification. Use sparingly.
 
 ## Providers
 
