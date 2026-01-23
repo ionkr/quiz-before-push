@@ -1,23 +1,70 @@
 # quiz-before-push
 
 [![npm version](https://img.shields.io/npm/v/quiz-before-push.svg)](https://www.npmjs.com/package/quiz-before-push)
+[![npm downloads](https://img.shields.io/npm/dm/quiz-before-push.svg)](https://www.npmjs.com/package/quiz-before-push)
+[![node](https://img.shields.io/badge/node-%3E%3D16-brightgreen)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[English Documentation](./README.md)**
 
 AI가 생성한 코드를 커밋하기 전에 개발자가 이해했는지 확인하는 AI 기반 코드 리뷰 퀴즈 도구입니다.
 
+> **29 kB** 경량 | **5개 AI 프로바이더** | **적응형 난이도** | **다국어 지원**
+
+## 빠른 시작
+
+```bash
+# 설치
+npm install -g quiz-before-push
+
+# git 훅 설정 (최초 1회)
+quiz-before-push --install-hooks && git config quiz.enabled true
+
+# AI 프로바이더 설정 (택 1)
+export OPENAI_API_KEY=sk-...    # 또는 ANTHROPIC_API_KEY, GEMINI_API_KEY
+
+# 퀴즈와 함께 푸시
+git push
+```
+
+## 목차
+
+- [빠른 시작](#빠른-시작)
+- [왜 필요한가요?](#왜-필요한가요)
+- [주요 기능](#주요-기능)
+- [예시](#예시)
+- [설치](#설치)
+- [Git 훅 설정](#git-훅-설정-권장)
+- [독립 실행형 CLI](#독립-실행형-cli-사용)
+- [설정](#설정)
+- [프로바이더](#프로바이더)
+- [동작 방식](#동작-방식)
+- [성능](#성능)
+- [보안](#보안)
+- [API](#프로그래매틱-api)
+
 ## 왜 필요한가요?
 
-Claude Code, GitHub Copilot, ChatGPT 같은 AI 코딩 어시스턴트를 사용할 때, 코드 변경사항을 완전히 이해하지 않고 수락하기 쉽습니다. **quiz-before-push**는 커밋하려는 변경사항에 대한 퀴즈를 생성하여 코드를 이해했는지 검증합니다.
+### 문제점
 
-- AI가 생성한 코드를 무분별하게 수락하는 것을 방지
-- 대화형 퀴즈를 통한 코드 이해도 향상
-- 이해가 검증될 때까지 커밋 차단
+AI 코딩 어시스턴트(Claude Code, GitHub Copilot, ChatGPT)가 코드 작성 방식을 변화시키고 있습니다. 하지만 강력한 도구에는 위험도 따릅니다:
+
+- 개발자들이 AI 제안을 **완전히 이해하지 않고** 수락하는 경우가 많습니다
+- "일단 동작하는" 코드에 숨겨진 버그, 보안 취약점, 아키텍처 문제가 있을 수 있습니다
+- 아무도 제대로 이해하지 못하는 코드가 머지되면 기술 부채가 쌓입니다
+
+### 해결책
+
+**quiz-before-push**는 커밋 전에 변경사항에 대한 퀴즈를 생성합니다. 코드가 무엇을 하는지 설명할 수 없다면, 커밋하면 안 됩니다.
+
+- AI가 생성한 코드의 **무분별한 수락 방지**
+- 대화형 질문을 통한 **이해도 향상**
+- 이해가 검증될 때까지 **커밋 차단**
+- **적응형 난이도** - 복잡한 변경에는 더 많은 질문
 
 ## 주요 기능
 
-- **다양한 AI 프로바이더 지원**: OpenAI, Anthropic, Ollama (로컬), Claude Code
+- **다양한 AI 프로바이더 지원**: OpenAI, Anthropic, Gemini, Ollama (로컬), Claude Code
 - **적응형 난이도**: 코드 변경 복잡도에 맞춰 퀴즈 난이도 자동 조절
 - **다국어 지원**: 모든 언어로 퀴즈 생성 (자동 감지 또는 설정 가능)
 - **Git 통합**: pre-push 훅 또는 독립 실행형 CLI로 사용
@@ -94,6 +141,10 @@ git config quiz.provider openai
 export ANTHROPIC_API_KEY=sk-ant-...
 git config quiz.provider anthropic
 
+# Gemini
+export GEMINI_API_KEY=...
+git config quiz.provider gemini
+
 # Ollama (로컬, API 키 불필요)
 ollama serve
 git config quiz.provider ollama
@@ -144,6 +195,7 @@ quiz-before-push
 # 다른 프로바이더 사용
 quiz-before-push --provider openai      # OpenAI (기본값)
 quiz-before-push --provider anthropic   # Anthropic Claude
+quiz-before-push --provider gemini      # Google Gemini
 quiz-before-push --provider ollama      # 로컬 Ollama
 quiz-before-push --provider claude-code # Claude Code CLI
 
@@ -166,12 +218,14 @@ quiz-before-push --language ja  # 일본어
 1. **퀴즈에 어떤 AI 프로바이더를 사용하시겠습니까?**
    - `openai` - OpenAI API (OPENAI_API_KEY 필요)
    - `anthropic` - Anthropic API (ANTHROPIC_API_KEY 필요)
+   - `gemini` - Google Gemini API (GEMINI_API_KEY 필요)
    - `ollama` - 로컬 Ollama (API 키 불필요, 로컬 실행)
    - `claude-code` - Claude Code CLI (추가 설정 불필요)
 
 2. **어떤 모델을 사용하시겠습니까?** (선택사항, 미지정 시 프로바이더 기본값 사용)
    - OpenAI: `gpt-4o`, `gpt-4o-mini` 등
    - Anthropic: `claude-sonnet-4-20250514`, `claude-opus-4-20250514` 등
+   - Gemini: `gemini-3-flash-preview`, `gemini-2.5-flash` 등
    - Ollama: `llama3.2`, `codellama` 등
 
 3. **퀴즈를 어떤 언어로 출제할까요?** (선택사항)
@@ -210,6 +264,7 @@ git config quiz.enabled true
 
 - **OpenAI**: `OPENAI_API_KEY` 환경 변수가 설정되어 있는지 확인
 - **Anthropic**: `ANTHROPIC_API_KEY` 환경 변수가 설정되어 있는지 확인
+- **Gemini**: `GEMINI_API_KEY` 환경 변수가 설정되어 있는지 확인
 - **Ollama**: Ollama가 실행 중인지 확인 (`ollama serve`)
 - **Claude Code**: 확인 불필요
 
@@ -240,7 +295,7 @@ git config quiz.enabled true
 
 | 옵션 | 설명 | 기본값 |
 |------|------|--------|
-| `-p, --provider <provider>` | AI 프로바이더 (openai, anthropic, ollama, claude-code) | `openai` |
+| `-p, --provider <provider>` | AI 프로바이더 (openai, anthropic, gemini, ollama, claude-code) | `openai` |
 | `-m, --model <model>` | 사용할 모델 | 프로바이더 기본값 |
 | `-k, --api-key <key>` | API 키 | `$OPENAI_API_KEY` 또는 `$ANTHROPIC_API_KEY` |
 | `-u, --ollama-url <url>` | Ollama 서버 URL | `http://localhost:11434` |
@@ -265,6 +320,7 @@ git config를 통한 설정 방법은 [Git 훅 설정](#git-훅-설정-권장) �
 ```bash
 export OPENAI_API_KEY=sk-...        # OpenAI API 키
 export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API 키
+export GEMINI_API_KEY=...           # Google Gemini API 키
 ```
 
 ## 프로바이더
@@ -281,6 +337,13 @@ quiz-before-push --provider openai --model gpt-4o
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
 quiz-before-push --provider anthropic --model claude-sonnet-4-20250514
+```
+
+### Gemini
+
+```bash
+export GEMINI_API_KEY=...
+quiz-before-push --provider gemini --model gemini-3-flash-preview
 ```
 
 ### Ollama (로컬)
@@ -329,6 +392,16 @@ quiz-before-push --provider claude-code
  커밋      재시도
  허용      또는 우회
 ```
+
+## 성능
+
+| 항목 | 값 |
+|------|-----|
+| 패키지 크기 | 29 kB (gzipped) |
+| 의존성 | 7개 런타임 |
+| Node.js | >= 16 |
+| 퀴즈 생성 | ~3-10초 (프로바이더별 상이) |
+| 로컬 평가 | < 100ms |
 
 ## 보안
 

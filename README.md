@@ -1,19 +1,66 @@
 # quiz-before-push
 
 [![npm version](https://img.shields.io/npm/v/quiz-before-push.svg)](https://www.npmjs.com/package/quiz-before-push)
+[![npm downloads](https://img.shields.io/npm/dm/quiz-before-push.svg)](https://www.npmjs.com/package/quiz-before-push)
+[![node](https://img.shields.io/badge/node-%3E%3D16-brightgreen)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **[한국어 문서 (Korean)](./README.ko.md)**
 
 AI-powered code review quiz that ensures developers understand AI-generated code before committing.
 
+> **29 kB** lightweight | **5 AI providers** | **Adaptive difficulty** | **Multi-language**
+
+## Quick Start
+
+```bash
+# Install
+npm install -g quiz-before-push
+
+# Set up git hook (one-time)
+quiz-before-push --install-hooks && git config quiz.enabled true
+
+# Configure AI provider (choose one)
+export OPENAI_API_KEY=sk-...    # or ANTHROPIC_API_KEY, GEMINI_API_KEY
+
+# Push with quiz
+git push
+```
+
+## Table of Contents
+
+- [Quick Start](#quick-start)
+- [Why?](#why)
+- [Features](#features)
+- [Example](#example)
+- [Installation](#installation)
+- [Git Hook Setup](#git-hook-setup-recommended)
+- [Standalone CLI](#standalone-cli-usage)
+- [Configuration](#configuration)
+- [Providers](#providers)
+- [How It Works](#how-it-works)
+- [Performance](#performance)
+- [Security](#security)
+- [API](#programmatic-api)
+
 ## Why?
 
-When using AI coding assistants like Claude Code, GitHub Copilot, or ChatGPT, it's easy to accept code changes without fully understanding them. **quiz-before-push** creates a quick quiz about the changes to verify you understand what's being committed.
+### The Problem
 
-- Prevent blind acceptance of AI-generated code
-- Improve code comprehension through interactive quizzes
-- Block commits until understanding is verified
+AI coding assistants (Claude Code, GitHub Copilot, ChatGPT) are transforming how we write code. But with great power comes great risk:
+
+- Developers often accept AI suggestions **without fully understanding them**
+- Code that "just works" may contain hidden bugs, security flaws, or architectural issues
+- Technical debt accumulates when teams merge code nobody truly comprehends
+
+### The Solution
+
+**quiz-before-push** creates a quick quiz about your changes before committing. If you can't explain what the code does, you probably shouldn't commit it.
+
+- **Prevent blind acceptance** of AI-generated code
+- **Improve comprehension** through interactive questions
+- **Block commits** until understanding is verified
+- **Adaptive difficulty** - complex changes get more questions
 
 ## Features
 
@@ -343,6 +390,16 @@ quiz-before-push --provider claude-code
  Commit    Retry or
  allowed   bypass
 ```
+
+## Performance
+
+| Metric | Value |
+|--------|-------|
+| Package size | 29 kB (gzipped) |
+| Dependencies | 7 runtime |
+| Node.js | >= 16 |
+| Quiz generation | ~3-10s (varies by provider) |
+| Local evaluation | < 100ms |
 
 ## Security
 
