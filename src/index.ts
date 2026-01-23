@@ -105,23 +105,40 @@ export class GitQuiz {
 
   private getPrePushDiff(): string {
     try {
-      // upstream이 설정된 경우
+      // upstream이 설정된 경우 (가장 일반적인 케이스)
       return execSync('git diff @{push}..HEAD', {
         encoding: 'utf-8',
         maxBuffer: 10 * 1024 * 1024,
       });
     } catch {
-      // upstream이 없으면 origin/main 또는 origin/master와 비교
+      // upstream이 없으면 merge-base를 활용하여 분기점부터 비교
+      // (직접 origin/main..HEAD 비교 시 main의 새 커밋도 diff에 포함되는 문제 방지)
+      return this.getDiffFromMergeBase();
+    }
+  }
+
+  private getDiffFromMergeBase(): string {
+    const execOptions = {
+      encoding: 'utf-8' as const,
+      maxBuffer: 10 * 1024 * 1024,
+    };
+
+    // origin/main과의 merge-base 시도
+    try {
+      const mergeBase = execSync('git merge-base origin/main HEAD', {
+        encoding: 'utf-8',
+      }).trim();
+      return execSync(`git diff ${mergeBase}..HEAD`, execOptions);
+    } catch {
+      // origin/master와의 merge-base 폴백
       try {
-        return execSync('git diff origin/main..HEAD', {
+        const mergeBase = execSync('git merge-base origin/master HEAD', {
           encoding: 'utf-8',
-          maxBuffer: 10 * 1024 * 1024,
-        });
+        }).trim();
+        return execSync(`git diff ${mergeBase}..HEAD`, execOptions);
       } catch {
-        return execSync('git diff origin/master..HEAD', {
-          encoding: 'utf-8',
-          maxBuffer: 10 * 1024 * 1024,
-        });
+        // 모든 시도 실패 시 HEAD의 전체 변경사항 반환
+        return execSync('git diff HEAD', execOptions);
       }
     }
   }
