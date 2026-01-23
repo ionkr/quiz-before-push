@@ -2,7 +2,12 @@ import type { Quiz, Question, EvaluationResult, QuizConfig } from '../types/inde
 
 export interface AIProvider {
   generateQuiz(diff: string, complexity: number): Promise<Quiz>;
-  evaluateAnswer(question: Question, answer: string): Promise<EvaluationResult>;
+  evaluateAnswer(
+    question: Question,
+    answer: string,
+    attemptCount?: number,
+    maxAttempts?: number
+  ): Promise<EvaluationResult>;
   getName(): string;
 }
 

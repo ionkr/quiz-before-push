@@ -132,7 +132,8 @@ export class QuizManager {
 
   async runQuiz(quiz: Quiz, diff?: string): Promise<QuizResult> {
     const results: QuizResult['results'] = [];
-    let failureCount = 0;
+    const maxAttempts = this.options.maxRetries;
+    const passingPercentage = 0.6; // 60% 이상 정답 시 통과
 
     // TTY 초기화 (git hook 환경 지원)
     this.initTTY();
@@ -146,8 +147,12 @@ export class QuizManager {
         let passed = false;
         let lastEvaluation: EvaluationResult | null = null;
         let lastAnswer = '';
+        let attemptCount = 0; // 문제별 시도 횟수
 
-        while (!passed && failureCount < this.options.maxRetries) {
+        while (!passed && attemptCount < maxAttempts) {
+          attemptCount++;
+          const isLastAttempt = attemptCount >= maxAttempts;
+
           this.displayQuestion(question, i + 1, quiz.questions.length);
 
           // 다음 prompt를 위해 입력 스트림 준비 (버퍼 비우기 + 상태 복구)
@@ -160,19 +165,24 @@ export class QuizManager {
 
           // 객관식이고 correctChoiceLabel이 있으면 로컬 평가 (API 호출 없음)
           if (question.type === 'MULTIPLE_CHOICE' && question.correctChoiceLabel) {
-            evaluation = this.evaluateMultipleChoice(question, answer);
+            evaluation = this.evaluateMultipleChoice(question, answer, isLastAttempt);
             lastEvaluation = evaluation;
-            this.displayEvaluation(evaluation);
+            this.displayEvaluation(evaluation, isLastAttempt);
           } else {
             // 서술형이거나 correctChoiceLabel이 없으면 AI 평가
             const spinner = ora('Evaluating your answer...').start();
 
             try {
-              evaluation = await this.provider.evaluateAnswer(question, answer);
+              evaluation = await this.provider.evaluateAnswer(
+                question,
+                answer,
+                attemptCount,
+                maxAttempts
+              );
               lastEvaluation = evaluation;
               spinner.stop();
 
-              this.displayEvaluation(evaluation);
+              this.displayEvaluation(evaluation, isLastAttempt);
             } catch (error) {
               spinner.fail('Failed to evaluate answer');
               throw error;
@@ -181,17 +191,14 @@ export class QuizManager {
 
           if (evaluation.passed) {
             passed = true;
-          } else {
-            failureCount++;
-            if (failureCount < this.options.maxRetries) {
-              console.log(
-                chalk.yellow(`\n⚠️  Attempts remaining: ${this.options.maxRetries - failureCount}`)
-              );
-              console.log(chalk.gray('Try again with a more detailed answer.\n'));
-            }
+          } else if (!isLastAttempt) {
+            console.log(
+              chalk.yellow(`\n⚠️  Attempts remaining: ${maxAttempts - attemptCount}`)
+            );
           }
         }
 
+        // 문제별 결과 저장
         if (lastEvaluation) {
           results.push({
             question,
@@ -200,26 +207,32 @@ export class QuizManager {
           });
         }
 
-        // Check if we've hit max failures
-        if (failureCount >= this.options.maxRetries && !passed) {
-          const bypassed = await this.handleFailure(diff);
-          this.closeTTY();
-
-          return {
-            totalQuestions: quiz.questions.length,
-            passedQuestions: results.filter((r) => r.evaluation.passed).length,
-            failedQuestions: results.filter((r) => !r.evaluation.passed).length,
-            results,
-            overallPassed: false,
-            bypassed,
-          };
+        // 3회 시도 후 정답 공개하고 다음 문제로 자동 진행
+        if (!passed) {
+          console.log(chalk.gray('\n→ Moving to next question...\n'));
         }
       }
 
+      // 전체 정답률로 통과 판정
       const passedCount = results.filter((r) => r.evaluation.passed).length;
-      const overallPassed = passedCount === quiz.questions.length;
+      const percentage = passedCount / quiz.questions.length;
+      const overallPassed = percentage >= passingPercentage;
 
       this.displayFinalResult(passedCount, quiz.questions.length, overallPassed);
+
+      // 통과하지 못한 경우 우회 옵션 제공
+      if (!overallPassed) {
+        const bypassed = await this.handleFailure(diff);
+
+        return {
+          totalQuestions: quiz.questions.length,
+          passedQuestions: passedCount,
+          failedQuestions: results.filter((r) => !r.evaluation.passed).length,
+          results,
+          overallPassed: false,
+          bypassed,
+        };
+      }
 
       return {
         totalQuestions: quiz.questions.length,
@@ -235,8 +248,8 @@ export class QuizManager {
   }
 
   async handleFailure(diff?: string): Promise<boolean> {
-    console.log(chalk.red.bold('\n❌ Maximum retry attempts reached!'));
-    console.log(chalk.gray('You have failed too many questions.\n'));
+    console.log(chalk.red.bold('\n❌ Quiz not passed!'));
+    console.log(chalk.gray('You need at least 60% correct answers to pass.\n'));
 
     if (this.options.showDiffOnBypass && diff) {
       await this.prepareInputForNextPrompt();
@@ -278,7 +291,7 @@ export class QuizManager {
     }
   }
 
-  private evaluateMultipleChoice(question: Question, answer: string): EvaluationResult {
+  private evaluateMultipleChoice(question: Question, answer: string, isLastAttempt: boolean = false): EvaluationResult {
     const isCorrect = answer === question.correctChoiceLabel;
 
     if (isCorrect) {
@@ -289,24 +302,34 @@ export class QuizManager {
         correctAnswer: question.correctChoiceLabel,
       };
     } else {
+      // 객관식은 힌트 없이 재시도, 마지막 시도에만 정답 공개
       return {
         score: 0,
         passed: false,
-        feedback: question.incorrectFeedback || `Incorrect. The correct answer is ${question.correctChoiceLabel}.`,
-        correctAnswer: question.correctChoiceLabel,
+        feedback: isLastAttempt
+          ? (question.incorrectFeedback || 'Incorrect.')
+          : 'Incorrect. Try again!',
+        correctAnswer: isLastAttempt ? question.correctChoiceLabel : undefined,
       };
     }
   }
 
-  private displayEvaluation(evaluation: EvaluationResult): void {
+  private displayEvaluation(evaluation: EvaluationResult, isLastAttempt: boolean = false): void {
     const scoreColor = evaluation.passed ? chalk.green : chalk.red;
     const icon = evaluation.passed ? '✓' : '✗';
 
     console.log(`\n${scoreColor(icon)} Score: ${evaluation.score}/10`);
     console.log(chalk.gray(`Feedback: ${evaluation.feedback}`));
 
-    if (!evaluation.passed && evaluation.correctAnswer) {
-      console.log(chalk.yellow(`Expected: ${evaluation.correctAnswer}`));
+    if (!evaluation.passed) {
+      // 힌트가 있고 마지막 시도가 아니면 힌트 표시
+      if (evaluation.hint && !isLastAttempt) {
+        console.log(chalk.cyan(`💡 Hint: ${evaluation.hint}`));
+      }
+      // 마지막 시도거나 정답이 있으면 정답 표시
+      if (isLastAttempt && evaluation.correctAnswer) {
+        console.log(chalk.yellow(`✓ Answer: ${evaluation.correctAnswer}`));
+      }
     }
   }
 

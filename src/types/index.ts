@@ -39,6 +39,7 @@ export interface EvaluationResult {
   passed: boolean;
   feedback: string;
   correctAnswer?: string;
+  hint?: string; // 오답 시 힌트 (정답 공개 전 제공)
 }
 
 export interface QuizConfig {
