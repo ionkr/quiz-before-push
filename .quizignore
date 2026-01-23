@@ -1,0 +1,12 @@
+# Quiz Before Push - Ignore Patterns
+# Files matching these patterns are excluded from diff analysis
+
+# Plan documents (not subject to quiz)
+plans/**
+
+# Documentation files
+*.md
+docs/**
+
+# Build artifacts (included in default patterns, but explicitly added)
+dist/**

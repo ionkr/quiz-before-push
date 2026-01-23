@@ -70,6 +70,7 @@ AI 코딩 어시스턴트(Claude Code, GitHub Copilot, ChatGPT)가 코드 작성
 - **Git 통합**: pre-push 훅 또는 독립 실행형 CLI로 사용
 - **Claude Code 통합**: 편집 후 실시간 퀴즈를 위한 post-edit 훅
 - **보안 우선**: diff에서 민감한 데이터 자동 제거
+- **파일 제외 설정**: `.quizignore`로 분석에서 제외할 파일 지정
 
 ## 설치
 
@@ -322,6 +323,27 @@ export OPENAI_API_KEY=sk-...        # OpenAI API 키
 export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API 키
 export GEMINI_API_KEY=...           # Google Gemini API 키
 ```
+
+### .quizignore
+
+프로젝트 루트에 `.quizignore` 파일을 생성하여 퀴즈 분석에서 제외할 파일을 지정할 수 있습니다:
+
+```
+# 문서 제외
+docs/**
+*.md
+
+# 특정 디렉토리 제외
+plans/**
+examples/**
+```
+
+기본 제외 패턴 (항상 적용):
+- `node_modules/**`
+- `dist/**`
+- `.git/**`
+- `*.lock`
+- `package-lock.json`
 
 ## 프로바이더
 

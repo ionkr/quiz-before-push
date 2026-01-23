@@ -100,7 +100,11 @@ exit $?
     console.log(chalk.gray('\nOptional configuration:'));
     console.log(chalk.cyan('  git config quiz.provider openai'));
     console.log(chalk.cyan('  git config quiz.model gpt-4o-mini'));
-    console.log(chalk.cyan('  git config quiz.language ko\n'));
+    console.log(chalk.cyan('  git config quiz.language ko'));
+    console.log(chalk.gray('\n💡 Tip: Create a .quizignore file to exclude files from quiz analysis:'));
+    console.log(chalk.gray('  echo "plans/**" >> .quizignore'));
+    console.log(chalk.gray('  echo "docs/**" >> .quizignore'));
+    console.log(chalk.gray('\n  Default excluded: node_modules/**, dist/**, .git/**, *.lock\n'));
   } catch (error) {
     if (error instanceof Error) {
       console.error(chalk.red(`❌ Failed to install hooks: ${error.message}`));

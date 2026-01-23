@@ -50,3 +50,8 @@ export interface QuizConfig {
   maxRetries?: number;
   passingScore?: number;
 }
+
+export interface IgnoreConfig {
+  patterns: string[];
+  defaultPatterns: string[];
+}

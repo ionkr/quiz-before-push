@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import { createProvider, type ProviderOptions } from './providers/index.js';
 import { ComplexityAnalyzer } from './analyzer/complexity.js';
 import { QuizManager, type QuizResult } from './quiz/manager.js';
+import { IgnoreParser } from './utils/index.js';
 
 export interface GitQuizOptions extends ProviderOptions {
   maxRetries?: number;
@@ -13,10 +14,26 @@ export interface GitQuizOptions extends ProviderOptions {
 export class GitQuiz {
   private options: GitQuizOptions;
   private analyzer: ComplexityAnalyzer;
+  private ignoreParser: IgnoreParser;
 
   constructor(options: GitQuizOptions) {
     this.options = options;
     this.analyzer = new ComplexityAnalyzer();
+    this.ignoreParser = new IgnoreParser();
+
+    // Load .quizignore from project root
+    const ignoreFilePath = this.getProjectRoot() + '/.quizignore';
+    this.ignoreParser.loadIgnoreFile(ignoreFilePath);
+  }
+
+  private getProjectRoot(): string {
+    try {
+      return execSync('git rev-parse --show-toplevel', {
+        encoding: 'utf-8',
+      }).trim();
+    } catch {
+      return process.cwd();
+    }
   }
 
   async run(): Promise<number> {
@@ -38,8 +55,16 @@ export class GitQuiz {
       // Sanitize diff to remove sensitive data
       const sanitizedDiff = this.sanitizeDiff(diff);
 
+      // Filter out ignored files
+      const filteredDiff = this.filterIgnoredFiles(sanitizedDiff);
+
+      if (!filteredDiff || filteredDiff.trim().length === 0) {
+        console.log(chalk.gray('No changes found after filtering ignored files. Nothing to quiz.\n'));
+        return 0;
+      }
+
       // Analyze complexity
-      const analysis = this.analyzer.analyzeDiff(sanitizedDiff);
+      const analysis = this.analyzer.analyzeDiff(filteredDiff);
 
       console.log(chalk.cyan('📊 Diff Analysis:'));
       console.log(chalk.gray(`   Files: ${analysis.fileCount}`));
@@ -59,7 +84,7 @@ export class GitQuiz {
       // Generate quiz
       console.log(chalk.cyan(`🤖 Generating quiz using ${provider.getName()}...`));
 
-      const quiz = await provider.generateQuiz(sanitizedDiff, analysis.complexity);
+      const quiz = await provider.generateQuiz(filteredDiff, analysis.complexity);
 
       // Run quiz
       const quizManager = new QuizManager(provider, {
@@ -181,6 +206,24 @@ export class GitQuiz {
     }
 
     return sanitized;
+  }
+
+  private filterIgnoredFiles(diff: string): string {
+    // Split diff by file blocks
+    const fileBlockRegex = /diff --git a\/(.+?) b\/(.+?)(?=\ndiff --git|$)/gs;
+    const blocks: string[] = [];
+
+    let match;
+    while ((match = fileBlockRegex.exec(diff)) !== null) {
+      const filePath = match[1];
+      const block = match[0];
+
+      if (!this.ignoreParser.shouldIgnore(filePath)) {
+        blocks.push(block);
+      }
+    }
+
+    return blocks.join('\n');
   }
 
   private getExitCode(result: QuizResult): number {

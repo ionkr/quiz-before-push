@@ -70,6 +70,7 @@ AI coding assistants (Claude Code, GitHub Copilot, ChatGPT) are transforming how
 - **Git Integration**: Works as a pre-push hook or standalone CLI
 - **Claude Code Integration**: Post-edit hook for real-time quizzes
 - **Security First**: Automatically redacts sensitive data from diffs
+- **Customizable Ignore**: Exclude files from analysis with `.quizignore`
 
 ## Installation
 
@@ -320,6 +321,27 @@ export OPENAI_API_KEY=sk-...        # OpenAI API key
 export ANTHROPIC_API_KEY=sk-ant-... # Anthropic API key
 export GEMINI_API_KEY=...           # Google Gemini API key
 ```
+
+### .quizignore
+
+Create a `.quizignore` file in your project root to exclude files from quiz analysis:
+
+```
+# Exclude documentation
+docs/**
+*.md
+
+# Exclude specific directories
+plans/**
+examples/**
+```
+
+Default excluded patterns (always applied):
+- `node_modules/**`
+- `dist/**`
+- `.git/**`
+- `*.lock`
+- `package-lock.json`
 
 ## Providers
 
