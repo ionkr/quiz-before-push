@@ -1,8 +1,8 @@
 import { execSync } from 'child_process';
-import type { AIProvider, AIProviderConfig } from './types.js';
+import type { AIProvider, AIProviderConfig, ChatMessage, ChatResponse } from './types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 import { ComplexityAnalyzer } from '../analyzer/complexity.js';
-import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse } from './instruction-builder.js';
+import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse, type RawChatResponse } from './instruction-builder.js';
 
 export class ClaudeCodeProvider implements AIProvider {
   private language?: string;
@@ -72,6 +72,35 @@ export class ClaudeCodeProvider implements AIProvider {
       }
       throw error;
     }
+  }
+
+  async chatAboutTopic(
+    question: Question,
+    userMessage: string,
+    chatHistory: ChatMessage[],
+    diff?: string
+  ): Promise<ChatResponse> {
+    const chatMessages = InstructionBuilder.buildChatMessages({
+      question,
+      userMessage,
+      chatHistory,
+      diff,
+      language: this.language,
+    });
+
+    // Combine messages into a single prompt for Claude CLI
+    const systemPrompt = chatMessages.find(m => m.role === 'system')?.content || '';
+    const historyText = chatMessages
+      .filter(m => m.role !== 'system')
+      .map(m => `${m.role}: ${m.content}`)
+      .join('\n\n');
+
+    const combinedPrompt = `${systemPrompt}\n\nConversation:\n${historyText}`;
+
+    const content = this.runClaude(combinedPrompt);
+    const parsed = InstructionBuilder.parseJsonResponse<RawChatResponse>(content);
+
+    return InstructionBuilder.buildChatFromResponse(parsed);
   }
 
   private escapeForShell(str: string): string {

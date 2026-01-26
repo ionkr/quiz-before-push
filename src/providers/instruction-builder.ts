@@ -1,4 +1,5 @@
 import type { Quiz, Question, EvaluationResult, ComplexityLevel, QuestionType } from '../types/index.js';
+import type { ChatMessage, ChatResponse } from './types.js';
 
 // ============================================
 // Type Definitions
@@ -17,6 +18,19 @@ export interface EvaluationPromptParams {
   attemptCount: number;
   maxAttempts: number;
   language?: string;
+}
+
+export interface ChatPromptParams {
+  question: Question;
+  userMessage: string;
+  chatHistory: ChatMessage[];
+  diff?: string;
+  language?: string;
+}
+
+export interface RawChatResponse {
+  message: string;
+  suggestedAction?: 'continue' | 'ready_to_answer';
 }
 
 export interface RawQuizResponse {
@@ -223,6 +237,90 @@ Respond with ONLY a JSON object (no markdown, no explanation):
       feedback: parsed.feedback,
       hint: parsed.hint || undefined,
       correctAnswer: parsed.correctAnswer || undefined,
+    };
+  }
+
+  /**
+   * Build the system prompt for topic chat
+   */
+  static buildChatSystemPrompt(params: ChatPromptParams): string {
+    const { question, diff, language } = params;
+    const languageInstruction = language
+      ? `Respond in ${language}.`
+      : 'Respond in the same language as the user message.';
+
+    const diffSection = diff
+      ? `\nRelevant code diff for context:\n\`\`\`\n${diff}\n\`\`\``
+      : '';
+
+    const choicesSection = question.type === 'MULTIPLE_CHOICE' && question.choices
+      ? `\nAnswer choices:\n${question.choices.map((c) => `${c.label}. ${c.text}`).join('\n')}`
+      : '';
+
+    return `You are a helpful coding tutor helping a developer understand a concept related to their code changes.
+
+The developer is working on a quiz about their code changes and wants to learn more about this topic before answering.
+
+Quiz Question: ${question.question}
+${choicesSection}
+
+Context: ${question.context || 'Code review quiz'}
+${diffSection}
+
+${languageInstruction}
+
+Guidelines:
+- Be helpful and educational, explain concepts clearly
+- Use examples from the actual code diff when relevant
+- Guide the developer toward understanding without directly giving away the answer
+- If they seem to understand the concept, gently suggest they might be ready to answer
+- Keep responses concise but informative
+- Be encouraging and supportive
+
+Respond with ONLY a JSON object (no markdown, no explanation):
+{
+  "message": "Your helpful response here",
+  "suggestedAction": "continue" or "ready_to_answer"
+}
+
+Use "ready_to_answer" only when the developer clearly demonstrates understanding of the core concept.`;
+  }
+
+  /**
+   * Build chat messages array for API calls
+   */
+  static buildChatMessages(params: ChatPromptParams): Array<{ role: string; content: string }> {
+    const { chatHistory, userMessage } = params;
+    const systemPrompt = this.buildChatSystemPrompt(params);
+
+    const messages: Array<{ role: string; content: string }> = [
+      { role: 'system', content: systemPrompt },
+    ];
+
+    // Add chat history
+    for (const msg of chatHistory) {
+      messages.push({
+        role: msg.role,
+        content: msg.content,
+      });
+    }
+
+    // Add current user message
+    messages.push({
+      role: 'user',
+      content: userMessage,
+    });
+
+    return messages;
+  }
+
+  /**
+   * Build ChatResponse object from raw API response
+   */
+  static buildChatFromResponse(parsed: RawChatResponse): ChatResponse {
+    return {
+      message: parsed.message,
+      suggestedAction: parsed.suggestedAction || 'continue',
     };
   }
 }

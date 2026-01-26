@@ -5,8 +5,10 @@ import ora from 'ora';
 import select from '@inquirer/select';
 import input from '@inquirer/input';
 import confirm from '@inquirer/confirm';
-import type { AIProvider } from '../providers/types.js';
+import type { AIProvider, ChatMessage } from '../providers/types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
+
+type QuizAction = 'answer' | 'chat';
 
 export interface QuizResult {
   totalQuestions: number;
@@ -148,6 +150,7 @@ export class QuizManager {
         let lastEvaluation: EvaluationResult | null = null;
         let lastAnswer = '';
         let attemptCount = 0; // 문제별 시도 횟수
+        const chatHistory: ChatMessage[] = []; // 질문별 대화 히스토리
 
         while (!passed && attemptCount < maxAttempts) {
           attemptCount++;
@@ -158,6 +161,18 @@ export class QuizManager {
           // 다음 prompt를 위해 입력 스트림 준비 (버퍼 비우기 + 상태 복구)
           await this.prepareInputForNextPrompt();
 
+          // 액션 선택: 답 입력 또는 대화
+          const action = await this.selectAction(question);
+
+          if (action === 'chat') {
+            // 대화 모드 진입 - 대화 후 다시 답변 선택으로 돌아옴
+            await this.runChatMode(question, chatHistory, diff);
+            // 대화 후에는 시도 횟수를 소모하지 않고 다시 루프
+            attemptCount--;
+            continue;
+          }
+
+          await this.prepareInputForNextPrompt();
           const answer = await this.getAnswer(question);
           lastAnswer = answer;
 
@@ -412,6 +427,112 @@ export class QuizManager {
         process.exit(1);
       }
       throw error;
+    }
+  }
+
+  private async selectAction(question: Question): Promise<QuizAction> {
+    const choices = [
+      {
+        value: 'answer' as QuizAction,
+        name: '✏️  Answer this question',
+      },
+      {
+        value: 'chat' as QuizAction,
+        name: '💬 Chat about this topic (learn before answering)',
+      },
+    ];
+
+    try {
+      const action = await select({
+        message: 'What would you like to do?',
+        choices: choices,
+        loop: true,
+      }, {
+        input: this.ttyInput!,
+        output: this.ttyOutput!,
+      });
+      return action;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'ExitPromptError') {
+        console.log(chalk.yellow('\n\nQuiz cancelled.'));
+        process.exit(1);
+      }
+      throw error;
+    }
+  }
+
+  private async runChatMode(
+    question: Question,
+    chatHistory: ChatMessage[],
+    diff?: string
+  ): Promise<void> {
+    console.log(chalk.cyan('\n💬 Chat Mode - Ask questions to learn about this topic'));
+    console.log(chalk.gray('Type "done" or "exit" to return to the quiz\n'));
+
+    let continueChat = true;
+
+    while (continueChat) {
+      await this.prepareInputForNextPrompt();
+
+      let userMessage: string;
+      try {
+        userMessage = await input({
+          message: chalk.blue('You:'),
+        }, {
+          input: this.ttyInput!,
+          output: this.ttyOutput!,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.name === 'ExitPromptError') {
+          console.log(chalk.yellow('\n\nQuiz cancelled.'));
+          process.exit(1);
+        }
+        throw error;
+      }
+
+      const trimmedMessage = userMessage.trim().toLowerCase();
+
+      // 대화 종료 명령어 체크
+      if (trimmedMessage === 'done' || trimmedMessage === 'exit' || trimmedMessage === '종료') {
+        console.log(chalk.cyan('\n📝 Returning to quiz...\n'));
+        break;
+      }
+
+      if (!userMessage.trim()) {
+        continue;
+      }
+
+      // AI 응답 요청
+      const spinner = ora('Thinking...').start();
+
+      try {
+        const response = await this.provider.chatAboutTopic(
+          question,
+          userMessage,
+          chatHistory,
+          diff
+        );
+
+        spinner.stop();
+
+        // 응답 표시
+        console.log(chalk.green('\n🤖 Assistant:'));
+        console.log(chalk.white(response.message));
+        console.log();
+
+        // 히스토리에 추가
+        chatHistory.push({ role: 'user', content: userMessage });
+        chatHistory.push({ role: 'assistant', content: response.message });
+
+        // AI가 준비되었다고 판단하면 부드럽게 안내
+        if (response.suggestedAction === 'ready_to_answer') {
+          console.log(chalk.cyan('💡 It seems like you have a good understanding now!'));
+          console.log(chalk.gray('Type "done" when you\'re ready to answer, or continue chatting.\n'));
+        }
+      } catch (error) {
+        spinner.fail('Failed to get response');
+        console.log(chalk.red('Error communicating with AI. Please try again.\n'));
+      }
     }
   }
 }
