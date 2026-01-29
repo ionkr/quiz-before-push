@@ -49,7 +49,7 @@ export interface QuizConfig {
   ollamaUrl?: string;
   language?: string;
   maxRetries?: number;
-  passingScore?: number;
+  passingPercentage?: number;
 }
 
 export interface IgnoreConfig {

@@ -7,7 +7,7 @@ import { IgnoreParser } from './utils/index.js';
 
 export interface GitQuizOptions extends ProviderOptions {
   maxRetries?: number;
-  passingScore?: number;
+  passingPercentage?: number;
   skipQuiz?: boolean;
 }
 
@@ -89,7 +89,7 @@ export class GitQuiz {
       // Run quiz
       const quizManager = new QuizManager(provider, {
         maxRetries: this.options.maxRetries ?? 3,
-        passingScore: this.options.passingScore ?? 7,
+        passingPercentage: this.options.passingPercentage ?? 0.6,
       });
 
       const result = await quizManager.runQuiz(quiz, diff);

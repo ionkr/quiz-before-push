@@ -1,4 +1,7 @@
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import type { AIProvider, AIProviderConfig, ChatMessage, ChatResponse } from './types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 import { ComplexityAnalyzer } from '../analyzer/complexity.js';
@@ -55,22 +58,48 @@ export class ClaudeCodeProvider implements AIProvider {
   }
 
   private runClaude(prompt: string): string {
+    // Write prompt to temp file to avoid shell argument length limits
+    const tempFile = path.join(os.tmpdir(), `quiz-prompt-${Date.now()}.txt`);
+
     try {
-      // Use claude CLI with -p flag for prompt and --output-format for JSON
-      const result = execSync(`claude -p "${this.escapeForShell(prompt)}" --output-format json`, {
+      fs.writeFileSync(tempFile, prompt, 'utf-8');
+
+      // Use claude CLI with Read tool to read the prompt from temp file
+      const metaPrompt = `Read the file ${tempFile} and follow the instructions in it exactly. Return only the JSON response as specified.`;
+
+      const result = spawnSync('claude', [
+        '-p', metaPrompt,
+        '--allowedTools', 'Read',
+        '--output-format', 'json',
+      ], {
         encoding: 'utf-8',
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
-        timeout: 120000, // 2 minute timeout
+        timeout: 180000, // 3 minute timeout for large diffs
       });
 
+      if (result.error) {
+        throw result.error;
+      }
+
+      if (result.status !== 0) {
+        throw new Error(`Claude CLI exited with code ${result.status}: ${result.stderr}`);
+      }
+
       // Parse the Claude CLI JSON output
-      const cliOutput = JSON.parse(result) as { result?: string; content?: string; text?: string };
-      return cliOutput.result || cliOutput.content || cliOutput.text || result;
+      const cliOutput = JSON.parse(result.stdout) as { result?: string; content?: string; text?: string };
+      return cliOutput.result || cliOutput.content || cliOutput.text || result.stdout;
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Claude CLI error: ${error.message}`);
       }
       throw error;
+    } finally {
+      // Clean up temp file
+      try {
+        fs.unlinkSync(tempFile);
+      } catch {
+        // Ignore cleanup errors
+      }
     }
   }
 
@@ -101,15 +130,5 @@ export class ClaudeCodeProvider implements AIProvider {
     const parsed = InstructionBuilder.parseJsonResponse<RawChatResponse>(content);
 
     return InstructionBuilder.buildChatFromResponse(parsed);
-  }
-
-  private escapeForShell(str: string): string {
-    // Escape special characters for shell
-    return str
-      .replace(/\\/g, '\\\\')
-      .replace(/"/g, '\\"')
-      .replace(/\$/g, '\\$')
-      .replace(/`/g, '\\`')
-      .replace(/\n/g, '\\n');
   }
 }
