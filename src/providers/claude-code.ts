@@ -5,7 +5,17 @@ import * as path from 'path';
 import type { AIProvider, AIProviderConfig, ChatMessage, ChatResponse } from './types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 import { ComplexityAnalyzer } from '../analyzer/complexity.js';
-import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse, type RawChatResponse } from './instruction-builder.js';
+import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse } from './instruction-builder.js';
+
+// Chat 응답용 JSON Schema (Claude Code CLI --json-schema 옵션용)
+const CHAT_JSON_SCHEMA = JSON.stringify({
+  type: 'object',
+  properties: {
+    message: { type: 'string' },
+    suggestedAction: { type: 'string', enum: ['continue', 'ready_to_answer'] }
+  },
+  required: ['message']
+});
 
 export class ClaudeCodeProvider implements AIProvider {
   private language?: string;
@@ -57,7 +67,7 @@ export class ClaudeCodeProvider implements AIProvider {
     return InstructionBuilder.buildEvaluationFromResponse(parsed);
   }
 
-  private runClaude(prompt: string): string {
+  private runClaude(prompt: string, jsonSchema?: string): string {
     // Write prompt to temp file to avoid shell argument length limits
     const tempFile = path.join(os.tmpdir(), `quiz-prompt-${Date.now()}.txt`);
 
@@ -67,11 +77,12 @@ export class ClaudeCodeProvider implements AIProvider {
       // Use claude CLI with Read tool to read the prompt from temp file
       const metaPrompt = `Read the file ${tempFile} and follow the instructions in it exactly. Return only the JSON response as specified.`;
 
-      const result = spawnSync('claude', [
-        '-p', metaPrompt,
-        '--allowedTools', 'Read',
-        '--output-format', 'json',
-      ], {
+      const args = ['-p', metaPrompt, '--allowedTools', 'Read', '--output-format', 'json'];
+      if (jsonSchema) {
+        args.push('--json-schema', jsonSchema);
+      }
+
+      const result = spawnSync('claude', args, {
         encoding: 'utf-8',
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
         timeout: 180000, // 3 minute timeout for large diffs
@@ -86,7 +97,17 @@ export class ClaudeCodeProvider implements AIProvider {
       }
 
       // Parse the Claude CLI JSON output
-      const cliOutput = JSON.parse(result.stdout) as { result?: string; content?: string; text?: string };
+      // --json-schema 사용 시 structured_output 필드에 결과 반환
+      const cliOutput = JSON.parse(result.stdout) as {
+        result?: string;
+        content?: string;
+        text?: string;
+        structured_output?: object;
+      };
+
+      if (jsonSchema && cliOutput.structured_output) {
+        return JSON.stringify(cliOutput.structured_output);
+      }
       return cliOutput.result || cliOutput.content || cliOutput.text || result.stdout;
     } catch (error) {
       if (error instanceof Error) {
@@ -126,8 +147,8 @@ export class ClaudeCodeProvider implements AIProvider {
 
     const combinedPrompt = `${systemPrompt}\n\nConversation:\n${historyText}`;
 
-    const content = this.runClaude(combinedPrompt);
-    const parsed = InstructionBuilder.parseJsonResponse<RawChatResponse>(content);
+    const content = this.runClaude(combinedPrompt, CHAT_JSON_SCHEMA);
+    const parsed = InstructionBuilder.parseChatJsonResponse(content);
 
     return InstructionBuilder.buildChatFromResponse(parsed);
   }

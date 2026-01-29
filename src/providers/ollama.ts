@@ -1,7 +1,7 @@
 import type { AIProvider, AIProviderConfig, ChatMessage, ChatResponse } from './types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 import { ComplexityAnalyzer } from '../analyzer/complexity.js';
-import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse, type RawChatResponse } from './instruction-builder.js';
+import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse } from './instruction-builder.js';
 
 interface OllamaChatResponse {
   message: {
@@ -89,7 +89,7 @@ export class OllamaProvider implements AIProvider {
     });
 
     const content = await this.chatWithMessages(chatMessages);
-    const parsed = InstructionBuilder.parseJsonResponse<RawChatResponse>(content);
+    const parsed = InstructionBuilder.parseChatJsonResponse(content);
 
     return InstructionBuilder.buildChatFromResponse(parsed);
   }
