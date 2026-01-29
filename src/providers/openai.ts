@@ -1,8 +1,8 @@
 import OpenAI from 'openai';
-import type { AIProvider, AIProviderConfig } from './types.js';
+import type { AIProvider, AIProviderConfig, ChatMessage, ChatResponse } from './types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 import { ComplexityAnalyzer } from '../analyzer/complexity.js';
-import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse } from './instruction-builder.js';
+import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse, type RawChatResponse } from './instruction-builder.js';
 
 export class OpenAIProvider implements AIProvider {
   private client: OpenAI;
@@ -91,5 +91,37 @@ export class OpenAIProvider implements AIProvider {
     const parsed = JSON.parse(content) as RawEvaluationResponse;
 
     return InstructionBuilder.buildEvaluationFromResponse(parsed);
+  }
+
+  async chatAboutTopic(
+    question: Question,
+    userMessage: string,
+    chatHistory: ChatMessage[],
+    diff?: string
+  ): Promise<ChatResponse> {
+    const messages = InstructionBuilder.buildChatMessages({
+      question,
+      userMessage,
+      chatHistory,
+      diff,
+      language: this.language,
+    });
+
+    const response = await this.client.chat.completions.create({
+      model: this.model,
+      messages: messages.map(m => ({
+        role: m.role as 'system' | 'user' | 'assistant',
+        content: m.content,
+      })),
+      response_format: { type: 'json_object' },
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response from OpenAI');
+    }
+
+    const parsed = JSON.parse(content) as RawChatResponse;
+    return InstructionBuilder.buildChatFromResponse(parsed);
   }
 }

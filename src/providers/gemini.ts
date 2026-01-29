@@ -1,4 +1,4 @@
-import type { AIProvider, AIProviderConfig } from './types.js';
+import type { AIProvider, AIProviderConfig, ChatMessage, ChatResponse } from './types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 import { ComplexityAnalyzer } from '../analyzer/complexity.js';
 import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse } from './instruction-builder.js';
@@ -66,6 +66,15 @@ const EVALUATION_JSON_SCHEMA = {
   required: ['score', 'passed', 'feedback'],
 };
 
+const CHAT_JSON_SCHEMA = {
+  type: 'object',
+  properties: {
+    message: { type: 'string' },
+    suggestedAction: { type: 'string', enum: ['continue', 'ready_to_answer'] },
+  },
+  required: ['message'],
+};
+
 export class GeminiProvider implements AIProvider {
   private baseUrl: string;
   private apiKey: string;
@@ -124,6 +133,36 @@ export class GeminiProvider implements AIProvider {
     const parsed = InstructionBuilder.parseJsonResponse<RawEvaluationResponse>(content);
 
     return InstructionBuilder.buildEvaluationFromResponse(parsed);
+  }
+
+  async chatAboutTopic(
+    question: Question,
+    userMessage: string,
+    chatHistory: ChatMessage[],
+    diff?: string
+  ): Promise<ChatResponse> {
+    const chatMessages = InstructionBuilder.buildChatMessages({
+      question,
+      userMessage,
+      chatHistory,
+      diff,
+      language: this.language,
+    });
+
+    // Gemini expects contents in a different format
+    // We'll combine system + history + user into a single prompt for simplicity
+    const systemPrompt = chatMessages.find(m => m.role === 'system')?.content || '';
+    const historyText = chatMessages
+      .filter(m => m.role !== 'system')
+      .map(m => `${m.role}: ${m.content}`)
+      .join('\n\n');
+
+    const combinedPrompt = `${systemPrompt}\n\nConversation:\n${historyText}`;
+
+    const content = await this.chat(combinedPrompt, CHAT_JSON_SCHEMA);
+    const parsed = InstructionBuilder.parseChatJsonResponse(content);
+
+    return InstructionBuilder.buildChatFromResponse(parsed);
   }
 
   private async chat(prompt: string, jsonSchema?: object): Promise<string> {

@@ -63,18 +63,22 @@ Question 1/2
 Context: Changes in src/utils/parser.ts
 
 ? What is the purpose of the new `parseConfig` function?
-❯ A) To read JSON files from disk
+> A) To read JSON files from disk
   B) To validate and parse configuration objects
   C) To convert strings to numbers
   D) To handle HTTP requests
-
-(Use arrow keys ↑↓ to select, Enter to confirm)
+  또는 AI에게 질문하세요...
+(↑↓ 이동)
 
 ✓ Score: 9/10
 Feedback: Excellent! The function validates and parses config objects.
 
 Question 2/2
 Explain why the error handling was changed in the `loadData` function.
+
+> 답변을 입력하세요...
+  또는 AI에게 질문하세요...
+(↑↓ 전환)
 
 Your answer: The try-catch was added to handle async errors gracefully
 and provide better error messages to users.

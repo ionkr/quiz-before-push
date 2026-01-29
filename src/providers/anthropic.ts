@@ -1,4 +1,4 @@
-import type { AIProvider, AIProviderConfig } from './types.js';
+import type { AIProvider, AIProviderConfig, ChatMessage, ChatResponse } from './types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 import { ComplexityAnalyzer } from '../analyzer/complexity.js';
 import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse } from './instruction-builder.js';
@@ -76,9 +76,41 @@ export class AnthropicProvider implements AIProvider {
     return InstructionBuilder.buildEvaluationFromResponse(parsed);
   }
 
+  async chatAboutTopic(
+    question: Question,
+    userMessage: string,
+    chatHistory: ChatMessage[],
+    diff?: string
+  ): Promise<ChatResponse> {
+    const chatMessages = InstructionBuilder.buildChatMessages({
+      question,
+      userMessage,
+      chatHistory,
+      diff,
+      language: this.language,
+    });
+
+    // Extract system message and user/assistant messages
+    const systemMessage = chatMessages.find(m => m.role === 'system')?.content || '';
+    const messages: AnthropicMessage[] = chatMessages
+      .filter(m => m.role !== 'system')
+      .map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      }));
+
+    const content = await this.chatWithSystem(messages, systemMessage);
+    const parsed = InstructionBuilder.parseChatJsonResponse(content);
+
+    return InstructionBuilder.buildChatFromResponse(parsed);
+  }
+
   private async chat(prompt: string): Promise<string> {
     const messages: AnthropicMessage[] = [{ role: 'user', content: prompt }];
+    return this.chatWithSystem(messages, 'You are a helpful assistant. Always respond with valid JSON only, no markdown formatting.');
+  }
 
+  private async chatWithSystem(messages: AnthropicMessage[], system: string): Promise<string> {
     const response = await fetch(`${this.baseUrl}/v1/messages`, {
       method: 'POST',
       headers: {
@@ -89,7 +121,7 @@ export class AnthropicProvider implements AIProvider {
       body: JSON.stringify({
         model: this.model,
         max_tokens: 4096,
-        system: 'You are a helpful assistant. Always respond with valid JSON only, no markdown formatting.',
+        system,
         messages,
       }),
     });

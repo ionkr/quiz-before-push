@@ -1,6 +1,6 @@
 {
   "name": "quiz-before-push",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "AI-powered code review quiz to ensure developers understand AI-written code before committing",
   "type": "module",
   "main": "dist/index.js",
@@ -20,7 +20,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/cli.ts",
-    "test": "echo \"No tests yet\""
+    "test": "vitest run"
   },
   "keywords": [
     "git",
@@ -40,14 +40,20 @@
     "@inquirer/select": "^5.0.4",
     "chalk": "^5.6.2",
     "commander": "^14.0.2",
+    "jsonrepair": "^3.13.2",
+    "marked": "^15.0.12",
+    "marked-terminal": "^7.3.0",
     "minimatch": "^10.0.1",
     "node-fetch": "^3.3.2",
     "openai": "^6.16.0",
     "ora": "^9.1.0"
   },
   "devDependencies": {
+    "@inquirer/testing": "^3.0.4",
+    "@types/marked-terminal": "^6.1.1",
     "@types/node": "^25.0.10",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

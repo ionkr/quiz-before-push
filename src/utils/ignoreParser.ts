@@ -10,6 +10,8 @@ export class IgnoreParser {
     '.git/**',
     '*.lock',
     'package-lock.json',
+    '.yarn/**',
+    '.pnp.*',
   ];
 
   constructor() {

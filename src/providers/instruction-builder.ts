@@ -1,4 +1,6 @@
+import { jsonrepair } from 'jsonrepair';
 import type { Quiz, Question, EvaluationResult, ComplexityLevel, QuestionType } from '../types/index.js';
+import type { ChatMessage, ChatResponse } from './types.js';
 
 // ============================================
 // Type Definitions
@@ -17,6 +19,19 @@ export interface EvaluationPromptParams {
   attemptCount: number;
   maxAttempts: number;
   language?: string;
+}
+
+export interface ChatPromptParams {
+  question: Question;
+  userMessage: string;
+  chatHistory: ChatMessage[];
+  diff?: string;
+  language?: string;
+}
+
+export interface RawChatResponse {
+  message: string;
+  suggestedAction?: 'continue' | 'ready_to_answer';
 }
 
 export interface RawQuizResponse {
@@ -183,13 +198,96 @@ Respond with ONLY a JSON object (no markdown, no explanation):
   static parseJsonResponse<T>(content: string): T {
     let jsonStr = content.trim();
 
-    // Remove markdown code blocks if present
-    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim();
+    // Remove markdown code blocks only if the response starts with ```
+    // (i.e., the entire response is wrapped in a code block)
+    if (jsonStr.startsWith('```')) {
+      const jsonMatch = jsonStr.match(/^```(?:json)?\s*([\s\S]*?)```$/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[1].trim();
+      }
     }
 
     return JSON.parse(jsonStr) as T;
+  }
+
+  /**
+   * Chat 응답용 JSON 파싱 (fallback 포함)
+   * 3-tier parsing strategy:
+   * 1. Standard JSON parse
+   * 2. jsonrepair library for malformed JSON
+   * 3. Plain text extraction as last resort
+   */
+  static parseChatJsonResponse(content: string): RawChatResponse {
+    // 1차: 정상 JSON 파싱
+    try {
+      return this.parseJsonResponse<RawChatResponse>(content);
+    } catch {
+      // 2차: jsonrepair 라이브러리로 복구 시도
+      try {
+        let text = content.trim();
+        // 마크다운 코드블록 제거 (전체가 코드블록으로 감싸진 경우에만)
+        if (text.startsWith('```')) {
+          const match = text.match(/^```(?:json)?\s*([\s\S]*?)```$/);
+          if (match) text = match[1].trim();
+        }
+
+        const repaired = jsonrepair(text);
+        const parsed = JSON.parse(repaired) as RawChatResponse;
+
+        // Validate that we got a proper object with message field
+        if (typeof parsed === 'object' && parsed !== null && typeof parsed.message === 'string') {
+          return parsed;
+        }
+        // jsonrepair might create invalid structure (e.g., just a string)
+        throw new Error('Invalid structure after repair');
+      } catch {
+        // 3차: plain text fallback
+        return this.extractChatFromText(content);
+      }
+    }
+  }
+
+  private static extractChatFromText(content: string): RawChatResponse {
+    let text = content.trim();
+
+    // 마크다운 코드블록 제거 (전체가 코드블록으로 감싸진 경우에만)
+    if (text.startsWith('```')) {
+      const match = text.match(/^```(?:json)?\s*([\s\S]*?)```$/);
+      if (match) text = match[1].trim();
+    }
+
+    // message 추출 시도 (JSON 구조에서)
+    // (?:[^"\\]|\\.)* - 이스케이프된 따옴표(\")를 올바르게 처리
+    const msgMatch = text.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    let message = msgMatch ? msgMatch[1] : text;
+
+    // 이스케이프 해제
+    message = message
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+
+    return {
+      message: message.trim(),
+      suggestedAction: this.inferSuggestedAction(text),
+    };
+  }
+
+  private static inferSuggestedAction(text: string): 'continue' | 'ready_to_answer' {
+    if (text.includes('"ready_to_answer"')) return 'ready_to_answer';
+
+    const readyPhrases = [
+      /ready to answer/i, /you seem ready/i, /try answering/i,
+      /답변.*준비/, /이해.*것 같/, /충분히.*이해/
+    ];
+
+    for (const pattern of readyPhrases) {
+      if (pattern.test(text)) return 'ready_to_answer';
+    }
+
+    return 'continue';
   }
 
   /**
@@ -223,6 +321,90 @@ Respond with ONLY a JSON object (no markdown, no explanation):
       feedback: parsed.feedback,
       hint: parsed.hint || undefined,
       correctAnswer: parsed.correctAnswer || undefined,
+    };
+  }
+
+  /**
+   * Build the system prompt for topic chat
+   */
+  static buildChatSystemPrompt(params: ChatPromptParams): string {
+    const { question, diff, language } = params;
+    const languageInstruction = language
+      ? `Respond in ${language}.`
+      : 'Respond in the same language as the user message.';
+
+    const diffSection = diff
+      ? `\nRelevant code diff for context:\n\`\`\`\n${diff}\n\`\`\``
+      : '';
+
+    const choicesSection = question.type === 'MULTIPLE_CHOICE' && question.choices
+      ? `\nAnswer choices:\n${question.choices.map((c) => `${c.label}. ${c.text}`).join('\n')}`
+      : '';
+
+    return `You are a helpful coding tutor helping a developer understand a concept related to their code changes.
+
+The developer is working on a quiz about their code changes and wants to learn more about this topic before answering.
+
+Quiz Question: ${question.question}
+${choicesSection}
+
+Context: ${question.context || 'Code review quiz'}
+${diffSection}
+
+${languageInstruction}
+
+Guidelines:
+- Be helpful and educational, explain concepts clearly
+- Use examples from the actual code diff when relevant
+- Guide the developer toward understanding without directly giving away the answer
+- If they seem to understand the concept, gently suggest they might be ready to answer
+- Keep responses concise but informative
+- Be encouraging and supportive
+
+Respond with ONLY a JSON object (no markdown, no explanation):
+{
+  "message": "Your helpful response here",
+  "suggestedAction": "continue" or "ready_to_answer"
+}
+
+Use "ready_to_answer" only when the developer clearly demonstrates understanding of the core concept.`;
+  }
+
+  /**
+   * Build chat messages array for API calls
+   */
+  static buildChatMessages(params: ChatPromptParams): Array<{ role: string; content: string }> {
+    const { chatHistory, userMessage } = params;
+    const systemPrompt = this.buildChatSystemPrompt(params);
+
+    const messages: Array<{ role: string; content: string }> = [
+      { role: 'system', content: systemPrompt },
+    ];
+
+    // Add chat history
+    for (const msg of chatHistory) {
+      messages.push({
+        role: msg.role,
+        content: msg.content,
+      });
+    }
+
+    // Add current user message
+    messages.push({
+      role: 'user',
+      content: userMessage,
+    });
+
+    return messages;
+  }
+
+  /**
+   * Build ChatResponse object from raw API response
+   */
+  static buildChatFromResponse(parsed: RawChatResponse): ChatResponse {
+    return {
+      message: parsed.message,
+      suggestedAction: parsed.suggestedAction || 'continue',
     };
   }
 }

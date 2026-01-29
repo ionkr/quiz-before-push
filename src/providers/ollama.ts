@@ -1,4 +1,4 @@
-import type { AIProvider, AIProviderConfig } from './types.js';
+import type { AIProvider, AIProviderConfig, ChatMessage, ChatResponse } from './types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
 import { ComplexityAnalyzer } from '../analyzer/complexity.js';
 import { InstructionBuilder, type RawQuizResponse, type RawEvaluationResponse } from './instruction-builder.js';
@@ -74,7 +74,37 @@ export class OllamaProvider implements AIProvider {
     return InstructionBuilder.buildEvaluationFromResponse(parsed);
   }
 
+  async chatAboutTopic(
+    question: Question,
+    userMessage: string,
+    chatHistory: ChatMessage[],
+    diff?: string
+  ): Promise<ChatResponse> {
+    const chatMessages = InstructionBuilder.buildChatMessages({
+      question,
+      userMessage,
+      chatHistory,
+      diff,
+      language: this.language,
+    });
+
+    const content = await this.chatWithMessages(chatMessages);
+    const parsed = InstructionBuilder.parseChatJsonResponse(content);
+
+    return InstructionBuilder.buildChatFromResponse(parsed);
+  }
+
   private async chat(prompt: string): Promise<string> {
+    return this.chatWithMessages([
+      {
+        role: 'system',
+        content: 'You are a helpful assistant. Always respond with valid JSON only, no markdown formatting.',
+      },
+      { role: 'user', content: prompt },
+    ]);
+  }
+
+  private async chatWithMessages(messages: Array<{ role: string; content: string }>): Promise<string> {
     const response = await fetch(`${this.baseUrl}/api/chat`, {
       method: 'POST',
       headers: {
@@ -82,13 +112,7 @@ export class OllamaProvider implements AIProvider {
       },
       body: JSON.stringify({
         model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful assistant. Always respond with valid JSON only, no markdown formatting.',
-          },
-          { role: 'user', content: prompt },
-        ],
+        messages,
         stream: false,
         format: 'json',
       }),
