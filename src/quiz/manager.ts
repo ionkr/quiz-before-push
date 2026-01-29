@@ -2,13 +2,13 @@ import * as fs from 'fs';
 import * as tty from 'tty';
 import chalk from 'chalk';
 import ora from 'ora';
-import select from '@inquirer/select';
-import input from '@inquirer/input';
 import confirm from '@inquirer/confirm';
 import type { AIProvider, ChatMessage } from '../providers/types.js';
 import type { Quiz, Question, EvaluationResult } from '../types/index.js';
-
-type QuizAction = 'answer' | 'chat';
+import quizAnswerPrompt, { type QuizAnswerResult } from './prompts/quiz-answer-prompt.js';
+import quizChatPrompt from './prompts/quiz-chat-prompt.js';
+import quizMultipleChoicePrompt from './prompts/quiz-multiple-choice-prompt.js';
+import { renderMarkdown } from '../utils/markdown.js';
 
 export interface QuizResult {
   totalQuestions: number;
@@ -25,13 +25,13 @@ export interface QuizResult {
 
 export interface QuizManagerOptions {
   maxRetries: number;
-  passingScore: number;
+  passingPercentage: number;
   showDiffOnBypass: boolean;
 }
 
 const DEFAULT_OPTIONS: QuizManagerOptions = {
   maxRetries: 3,
-  passingScore: 7,
+  passingPercentage: 0.6,
   showDiffOnBypass: true,
 };
 
@@ -135,7 +135,7 @@ export class QuizManager {
   async runQuiz(quiz: Quiz, diff?: string): Promise<QuizResult> {
     const results: QuizResult['results'] = [];
     const maxAttempts = this.options.maxRetries;
-    const passingPercentage = 0.6; // 60% 이상 정답 시 통과
+    const passingPercentage = this.options.passingPercentage;
 
     // TTY 초기화 (git hook 환경 지원)
     this.initTTY();
@@ -161,19 +161,34 @@ export class QuizManager {
           // 다음 prompt를 위해 입력 스트림 준비 (버퍼 비우기 + 상태 복구)
           await this.prepareInputForNextPrompt();
 
-          // 액션 선택: 답 입력 또는 대화
-          const action = await this.selectAction(question);
+          let answer: string;
 
-          if (action === 'chat') {
-            // 대화 모드 진입 - 대화 후 다시 답변 선택으로 돌아옴
-            await this.runChatMode(question, chatHistory, diff);
-            // 대화 후에는 시도 횟수를 소모하지 않고 다시 루프
-            attemptCount--;
-            continue;
+          if (question.type === 'MULTIPLE_CHOICE' && question.choices) {
+            // 객관식: 커스텀 프롬프트 사용
+            const result = await this.getMultipleChoiceAnswer(question);
+
+            if (result.action === 'chat') {
+              await this.runChatMode(question, chatHistory, diff, result.value);
+              attemptCount--;
+              continue;
+            }
+
+            answer = result.value;
+          } else {
+            // 주관식: 새 통합 프롬프트 사용
+            const result = await this.getAnswerWithChatOption();
+
+            if (result.action === 'chat') {
+              // 대화 모드 진입 - 대화 후 다시 답변 선택으로 돌아옴
+              await this.runChatMode(question, chatHistory, diff, result.value);
+              // 대화 후에는 시도 횟수를 소모하지 않고 다시 루프
+              attemptCount--;
+              continue;
+            }
+
+            answer = result.value;
           }
 
-          await this.prepareInputForNextPrompt();
-          const answer = await this.getAnswer(question);
           lastAnswer = answer;
 
           let evaluation: EvaluationResult;
@@ -296,13 +311,11 @@ export class QuizManager {
   private displayQuestion(question: Question, current: number, total: number): void {
     console.log(chalk.bold(`\nQuestion ${current}/${total}`));
 
-    if (question.context) {
-      console.log(chalk.gray(`Context: ${question.context}`));
-    }
-
-    // MULTIPLE_CHOICE가 아닐 때만 질문 텍스트 출력 (select가 message로 표시)
+    // 주관식: 질문 텍스트와 구분선 표시
+    // 객관식: select가 message로 표시하므로 여기서는 생략
     if (question.type !== 'MULTIPLE_CHOICE') {
-      console.log(chalk.white(`\n${question.question}\n`));
+      console.log(chalk.white(`\n${question.question}`));
+      console.log(chalk.gray('─'.repeat(50)));
     }
   }
 
@@ -364,45 +377,19 @@ export class QuizManager {
     console.log(chalk.white(`\nScore: ${passed}/${total} (${percentage}%)\n`));
   }
 
-  private async getMultipleChoiceAnswer(question: Question): Promise<string> {
-    const choices = question.choices!.map(choice => ({
-      value: choice.label,
-      name: `${choice.label}) ${choice.text}`,
-    }));
-
+  private async getMultipleChoiceAnswer(question: Question): Promise<{ action: 'answer' | 'chat'; value: string }> {
     try {
-      const answer = await select({
+      const result = await quizMultipleChoicePrompt({
         message: question.question,
-        choices: choices,
-        loop: true,
+        choices: question.choices!.map(choice => ({
+          label: choice.label,
+          text: choice.text,
+        })),
       }, {
         input: this.ttyInput!,
         output: this.ttyOutput!,
       });
-      return answer;
-    } catch (error) {
-      if (error instanceof Error && error.name === 'ExitPromptError') {
-        console.log(chalk.yellow('\n\nQuiz cancelled.'));
-        process.exit(1);
-      }
-      throw error;
-    }
-  }
-
-  private async getAnswer(question: Question): Promise<string> {
-    if (question.type === 'MULTIPLE_CHOICE' && question.choices) {
-      return this.getMultipleChoiceAnswer(question);
-    }
-
-    // 서술형 입력
-    try {
-      const answer = await input({
-        message: 'Your answer:',
-      }, {
-        input: this.ttyInput!,
-        output: this.ttyOutput!,
-      });
-      return answer.trim();
+      return result;
     } catch (error) {
       if (error instanceof Error && error.name === 'ExitPromptError') {
         console.log(chalk.yellow('\n\nQuiz cancelled.'));
@@ -430,28 +417,13 @@ export class QuizManager {
     }
   }
 
-  private async selectAction(question: Question): Promise<QuizAction> {
-    const choices = [
-      {
-        value: 'answer' as QuizAction,
-        name: '✏️  Answer this question',
-      },
-      {
-        value: 'chat' as QuizAction,
-        name: '💬 Chat about this topic (learn before answering)',
-      },
-    ];
-
+  private async getAnswerWithChatOption(): Promise<QuizAnswerResult> {
     try {
-      const action = await select({
-        message: 'What would you like to do?',
-        choices: choices,
-        loop: true,
-      }, {
+      const result = await quizAnswerPrompt({}, {
         input: this.ttyInput!,
         output: this.ttyOutput!,
       });
-      return action;
+      return result;
     } catch (error) {
       if (error instanceof Error && error.name === 'ExitPromptError') {
         console.log(chalk.yellow('\n\nQuiz cancelled.'));
@@ -464,42 +436,46 @@ export class QuizManager {
   private async runChatMode(
     question: Question,
     chatHistory: ChatMessage[],
-    diff?: string
+    diff?: string,
+    initialQuestion?: string
   ): Promise<void> {
-    console.log(chalk.cyan('\n💬 Chat Mode - Ask questions to learn about this topic'));
-    console.log(chalk.gray('Type "done" or "exit" to return to the quiz\n'));
+    console.log(chalk.cyan('\n💬 Chat Mode\n'));
 
-    let continueChat = true;
+    // 초기 질문이 있으면 바로 AI 응답 요청
+    let pendingQuestion = initialQuestion?.trim() || '';
 
-    while (continueChat) {
-      await this.prepareInputForNextPrompt();
+    while (true) {
+      let userMessage = pendingQuestion;
+      pendingQuestion = ''; // 한 번 처리 후 초기화
 
-      let userMessage: string;
-      try {
-        userMessage = await input({
-          message: chalk.blue('You:'),
-        }, {
-          input: this.ttyInput!,
-          output: this.ttyOutput!,
-        });
-      } catch (error) {
-        if (error instanceof Error && error.name === 'ExitPromptError') {
-          console.log(chalk.yellow('\n\nQuiz cancelled.'));
-          process.exit(1);
+      // 초기 질문이 없거나 이미 처리된 경우에만 프롬프트 표시
+      if (!userMessage) {
+        await this.prepareInputForNextPrompt();
+
+        let result;
+        try {
+          result = await quizChatPrompt({}, {
+            input: this.ttyInput!,
+            output: this.ttyOutput!,
+          });
+        } catch (error) {
+          if (error instanceof Error && error.name === 'ExitPromptError') {
+            console.log(chalk.yellow('\n\nQuiz cancelled.'));
+            process.exit(1);
+          }
+          throw error;
         }
-        throw error;
-      }
 
-      const trimmedMessage = userMessage.trim().toLowerCase();
+        // 정답 입력 모드로 전환
+        if (result.action === 'exit') {
+          console.log(chalk.cyan('\n📝 Returning to quiz...\n'));
+          break;
+        }
 
-      // 대화 종료 명령어 체크
-      if (trimmedMessage === 'done' || trimmedMessage === 'exit' || trimmedMessage === '종료') {
-        console.log(chalk.cyan('\n📝 Returning to quiz...\n'));
-        break;
-      }
-
-      if (!userMessage.trim()) {
-        continue;
+        userMessage = result.value.trim();
+        if (!userMessage) {
+          continue;
+        }
       }
 
       // AI 응답 요청
@@ -515,10 +491,9 @@ export class QuizManager {
 
         spinner.stop();
 
-        // 응답 표시
+        // 응답 표시 (마크다운 렌더링)
         console.log(chalk.green('\n🤖 Assistant:'));
-        console.log(chalk.white(response.message));
-        console.log();
+        console.log(renderMarkdown(response.message));
 
         // 히스토리에 추가
         chatHistory.push({ role: 'user', content: userMessage });
@@ -527,11 +502,15 @@ export class QuizManager {
         // AI가 준비되었다고 판단하면 부드럽게 안내
         if (response.suggestedAction === 'ready_to_answer') {
           console.log(chalk.cyan('💡 It seems like you have a good understanding now!'));
-          console.log(chalk.gray('Type "done" when you\'re ready to answer, or continue chatting.\n'));
+          console.log(chalk.gray('Select "정답 입력 모드로 전환" when ready, or continue chatting.\n'));
         }
       } catch (error) {
         spinner.fail('Failed to get response');
-        console.log(chalk.red('Error communicating with AI. Please try again.\n'));
+        if (error instanceof Error) {
+          console.log(chalk.red(`Error: ${error.message}\n`));
+        } else {
+          console.log(chalk.red('Error communicating with AI. Please try again.\n'));
+        }
       }
     }
   }
